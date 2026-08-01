@@ -341,6 +341,99 @@ def check_bytes(path: Path, expected: bytes) -> None:
         raise SystemExit(f"Stale generated browser artifact: {path}")
 
 
+def load_canonical_json(path: Path, label: str) -> dict:
+    if not path.exists():
+        raise SystemExit(f"Missing generated browser artifact: {path}")
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"Invalid {label}: {path}: {exc}") from exc
+    check_bytes(path, canonical_json_bytes(payload))
+    return payload
+
+
+def verify_existing_bundle(
+    ensemble: FrozenActorEnsemble,
+    model_bytes: bytes,
+    onnx_path: Path,
+    onnx_name: str,
+    onnx_digest: str,
+    golden_path: Path,
+    manifest_path: Path,
+) -> float:
+    """Verify frozen release bytes without regenerating CPU-dependent logits.
+
+    Tanh implementations can differ by a few ULPs across macOS/arm64 and
+    Linux/x86_64.  The released golden numbers are therefore immutable test
+    data: CI checks their hash and evaluates them numerically within the
+    recorded tolerance instead of requiring cross-platform byte regeneration.
+    """
+    check_bytes(onnx_path, model_bytes)
+    golden = load_canonical_json(golden_path, "golden vectors")
+    golden_digest = hashlib.sha256(golden_path.read_bytes()).hexdigest()
+    manifest = load_canonical_json(manifest_path, "model manifest")
+
+    if golden.get("modelVersion") != ensemble.model_version:
+        raise SystemExit("Golden-vector model version mismatch")
+    if golden.get("sourceArtifactSha256") != ensemble.artifact_sha256:
+        raise SystemExit("Golden-vector source artifact mismatch")
+    if golden.get("onnxArtifactSha256") != onnx_digest:
+        raise SystemExit("Golden-vector ONNX artifact mismatch")
+
+    recorded_error = float(
+        manifest.get("validation", {}).get(
+            "pythonOnnxMaxAbsoluteLogitError", float("nan")
+        )
+    )
+    if not np.isfinite(recorded_error):
+        raise SystemExit("Model manifest has no finite Python/ONNX error")
+    expected_manifest = build_manifest(
+        ensemble,
+        onnx_name,
+        onnx_digest,
+        len(model_bytes),
+        golden_digest,
+        recorded_error,
+    )
+    check_bytes(manifest_path, canonical_json_bytes(expected_manifest))
+
+    tolerance = float(golden.get("logitAbsoluteTolerance", float("nan")))
+    if not np.isfinite(tolerance) or tolerance <= 0:
+        raise SystemExit("Golden-vector tolerance is invalid")
+    session = ort.InferenceSession(model_bytes, providers=["CPUExecutionProvider"])
+    maximum_error = 0.0
+    for vector in golden.get("vectors", []):
+        observations = np.asarray(vector["observations"], dtype=np.float64)
+        expected_logits = np.asarray(vector["expectedLogits"], dtype=np.float64)
+        expected_actions = np.asarray(vector["expectedActions"], dtype=np.int64)
+        expected_shape = (ensemble.ensemble_size, len(ensemble.feature_names) + 2)
+        if observations.shape != expected_shape or expected_logits.shape != (
+            ensemble.ensemble_size,
+            len(RESIDUAL_MULTIPLIERS),
+        ):
+            raise SystemExit("Golden-vector tensor shape mismatch")
+        onnx_logits = session.run(
+            ["logits"], {"observations": observations}
+        )[0]
+        numpy_logits = ensemble.logits(observations)
+        maximum_error = max(
+            maximum_error,
+            float(np.max(np.abs(onnx_logits - expected_logits))),
+            float(np.max(np.abs(numpy_logits - expected_logits))),
+        )
+        if not np.array_equal(np.argmax(onnx_logits, axis=1), expected_actions):
+            raise SystemExit(f"ONNX golden action mismatch on {vector['date']}")
+        if not np.array_equal(np.argmax(numpy_logits, axis=1), expected_actions):
+            raise SystemExit(f"NumPy golden action mismatch on {vector['date']}")
+    if not golden.get("vectors"):
+        raise SystemExit("Golden-vector release contains no cases")
+    if maximum_error > tolerance:
+        raise SystemExit(
+            f"Golden logits exceeded tolerance: {maximum_error} > {tolerance}"
+        )
+    return maximum_error
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--source", type=Path, default=DEFAULT_SOURCE)
@@ -356,6 +449,25 @@ def main() -> None:
     model_bytes = build_onnx(ensemble)
     onnx_digest = hashlib.sha256(model_bytes).hexdigest()
     onnx_name = f"rlqqq-v8-ensemble.{onnx_digest[:12]}.onnx"
+    onnx_path = args.output_dir / onnx_name
+    golden_path = args.output_dir / "golden-vectors.json"
+    manifest_path = args.output_dir / "model-manifest.json"
+    if args.check:
+        max_error = verify_existing_bundle(
+            ensemble,
+            model_bytes,
+            onnx_path,
+            onnx_name,
+            onnx_digest,
+            golden_path,
+            manifest_path,
+        )
+        print(
+            f"Browser policy bundle verified: {onnx_name}, "
+            f"max golden error {max_error:.3g}"
+        )
+        return
+
     golden, max_error = build_golden_vectors(
         ensemble,
         model_bytes,
@@ -372,19 +484,6 @@ def main() -> None:
         max_error,
     )
     manifest_bytes = canonical_json_bytes(manifest)
-
-    onnx_path = args.output_dir / onnx_name
-    golden_path = args.output_dir / "golden-vectors.json"
-    manifest_path = args.output_dir / "model-manifest.json"
-    if args.check:
-        check_bytes(onnx_path, model_bytes)
-        check_bytes(golden_path, golden_bytes)
-        check_bytes(manifest_path, manifest_bytes)
-        print(
-            f"Browser policy bundle verified: {onnx_name}, "
-            f"max logit error {max_error:.3g}"
-        )
-        return
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
     onnx_path.write_bytes(model_bytes)
