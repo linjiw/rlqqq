@@ -49,7 +49,7 @@
     "term_spread_10y_3m",
     "vix_chg_5d"
   ],
-  "normalizer": "QQQ train window 1999-03-10 through 2023-12-31",
+  "normalizer": "QQQ train rows 2000-03-08 through 2023-12-29",
   "training": {
     "timesteps": 150000,
     "bootstrapPaths": 3,

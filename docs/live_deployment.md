@@ -35,7 +35,8 @@ current exposure and the causal VT10 anchor.
 
 ## Data source
 
-The initial public feed is Yahoo Finance through `yfinance`. It is suitable
+The initial public feed is Yahoo Finance through
+[`yfinance`](https://ranaroussi.github.io/yfinance/). It is suitable
 for this delayed research demonstration because it requires no client-side
 secret and matches the historical source. `yfinance` states that it is an
 unaffiliated open-source tool for research and education and that Yahoo data
@@ -45,11 +46,13 @@ delayed and research-grade, never real-time or execution-grade.
 For a production service, replace `fetch_yahoo_market_frames()` with a
 credentialed provider adapter:
 
-- Alpaca supports split, dividend, spin-off, or all-adjusted stock bars. Its
-  free IEX feed represents a single exchange and roughly 2.5% of volume; the
-  paid SIP feed covers all US exchanges.
-- Twelve Data requires an API key for full access. Any key belongs in GitHub
-  Actions secrets and must never be serialized into frontend JavaScript.
+- [Alpaca](https://docs.alpaca.markets/us/docs/historical-stock-data-1)
+  supports split, dividend, spin-off, or all-adjusted stock bars. Its free IEX
+  feed represents a single exchange and roughly 2.5% of volume; the paid SIP
+  feed covers all US exchanges.
+- [Twelve Data](https://twelvedata.com/docs) requires an API key for full
+  access. Any key belongs in GitHub Actions secrets and must never be
+  serialized into frontend JavaScript.
 
 Feature formulas, adjustment choices, and session calendars must still pass
 the snapshot parity test after a provider change.
@@ -57,15 +60,19 @@ the snapshot parity test after a provider change.
 ## Schedule and failure behavior
 
 `.github/workflows/pages.yml` refreshes at 22:37 UTC Monday through Friday,
-away from GitHub's busiest top-of-hour period. GitHub documents scheduled
-Actions as best-effort: runs can be delayed or dropped under load, execute
-only on the default branch, and are disabled in public repositories after 60
-days without repository activity.
+away from GitHub's busiest top-of-hour period. [GitHub documents scheduled
+Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
+as best-effort: runs can be delayed or dropped under load, execute only on
+the default branch, and are disabled in public repositories after 60 days
+without repository activity.
 
 The frontend therefore derives freshness again at view time. A missing,
 invalid, or old payload produces an unavailable/stale state while the
 historical replay remains usable. The workflow fails before deployment when
 market data, feature construction, or actor inference is incomplete.
+Previously logged per-seed exposure state is checksummed; a provider revision
+that changes the published policy path also fails closed instead of silently
+rewriting history.
 
 ## Local operation
 

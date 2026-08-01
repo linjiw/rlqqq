@@ -16,6 +16,7 @@ from rlqqq.live import (
     build_signal_payload,
     load_checked_market_frames,
     replay_frozen_policy,
+    validate_forward_log,
     write_signal_json,
 )
 
@@ -98,6 +99,7 @@ def test_signal_contract_reproduces_latest_snapshot(tmp_path):
     write_signal_json(payload, signal_path)
     assert append_forward_log(payload, log_path) is True
     assert append_forward_log(payload, log_path) is False
+    validate_forward_log(replay, log_path)
     with log_path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
     assert len(rows) == 1

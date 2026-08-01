@@ -242,7 +242,10 @@ def main() -> None:
         "architecture": "26 -> 64 tanh -> 64 tanh -> 3 categorical logits",
         "residualMultipliers": [0.5, 1.0, 1.5],
         "featureNames": FEATURE_NAMES,
-        "normalizer": "QQQ train window 1999-03-10 through 2023-12-31",
+        "normalizer": (
+            f"QQQ train rows {train.index[0].date()} through "
+            f"{train.index[-1].date()}"
+        ),
         "training": {
             "timesteps": args.timesteps,
             "bootstrapPaths": 3,

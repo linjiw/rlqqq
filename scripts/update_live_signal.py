@@ -19,6 +19,7 @@ from rlqqq.live import (
     fetch_yahoo_market_frames,
     load_checked_market_frames,
     replay_frozen_policy,
+    validate_forward_log,
     write_signal_json,
 )
 
@@ -64,6 +65,8 @@ def main() -> None:
         frames["^IRX"],
     )
     replay = replay_frozen_policy(ensemble, features, frames["QQQ"])
+    if not args.no_log:
+        validate_forward_log(replay, args.forward_log)
     generated_at = (
         datetime.fromisoformat(args.generated_at.replace("Z", "+00:00"))
         if args.generated_at

@@ -69,6 +69,7 @@ FORWARD_LOG_FIELDS = [
     "vt20_exposure",
     "composite_exposure",
     "stance",
+    "actor_state_sha256",
 ]
 
 
@@ -392,6 +393,13 @@ def _number(value: float, digits: int = 6) -> float:
     return round(float(value), digits)
 
 
+def actor_state_sha256(exposure: np.ndarray) -> str:
+    canonical = np.round(
+        np.asarray(exposure, dtype=np.float64), 5
+    ).astype("<f8", copy=False)
+    return hashlib.sha256(canonical.tobytes()).hexdigest()
+
+
 def build_signal_payload(
     replay: pd.DataFrame,
     ensemble: FrozenActorEnsemble,
@@ -402,6 +410,9 @@ def build_signal_payload(
     if replay.empty:
         raise ValueError("Cannot serialize an empty policy replay")
     latest = replay.iloc[-1]
+    latest_actor_exposure = replay.attrs.get("actor_exposure")
+    if latest_actor_exposure is None:
+        raise ValueError("Replay is missing per-actor exposure state")
     as_of = pd.Timestamp(replay.index[-1])
     generated = generated_at or datetime.now(timezone.utc)
     if generated.tzinfo is None:
@@ -458,6 +469,7 @@ def build_signal_payload(
             "vt20Exposure": _number(latest["vt20_exposure"], 5),
             "compositeExposure": _number(latest["composite_exposure"], 5),
             "stance": stance,
+            "actorStateSha256": actor_state_sha256(latest_actor_exposure[-1]),
             "researchPosture": (
                 "Risk budget below full exposure"
                 if learned < 0.95
@@ -541,6 +553,7 @@ def append_forward_log(payload: Mapping, output: str | Path) -> bool:
         "vt20_exposure": signal["vt20Exposure"],
         "composite_exposure": signal["compositeExposure"],
         "stance": signal["stance"],
+        "actor_state_sha256": signal["actorStateSha256"],
     }
     write_header = not path.exists() or path.stat().st_size == 0
     with path.open("a", newline="", encoding="utf-8") as handle:
@@ -549,3 +562,30 @@ def append_forward_log(payload: Mapping, output: str | Path) -> bool:
             writer.writeheader()
         writer.writerow(row)
     return True
+
+
+def validate_forward_log(replay: pd.DataFrame, input_path: str | Path) -> None:
+    """Reject a refresh that would rewrite an already published actor state."""
+    path = Path(input_path)
+    if not path.exists() or path.stat().st_size == 0:
+        return
+    actor_exposure = replay.attrs.get("actor_exposure")
+    if actor_exposure is None:
+        raise ValueError("Replay is missing per-actor exposure state")
+
+    with path.open(newline="", encoding="utf-8") as handle:
+        rows = list(csv.DictReader(handle))
+    for row in rows:
+        date = pd.Timestamp(row["date"])
+        if date not in replay.index:
+            raise ValueError(f"Forward log date {date.date()} is absent from replay")
+        position = int(replay.index.get_loc(date))
+        expected_hash = actor_state_sha256(actor_exposure[position])
+        logged_hash = row.get("actor_state_sha256", "")
+        if not logged_hash:
+            raise ValueError(f"Forward log date {date.date()} has no actor-state hash")
+        if logged_hash != expected_hash:
+            raise ValueError(
+                f"Forward actor state drifted on {date.date()}; "
+                "refusing to rewrite the published path"
+            )

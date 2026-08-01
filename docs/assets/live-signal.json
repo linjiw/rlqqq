@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "asOf": "2026-07-31",
-  "generatedAt": "2026-08-01T12:00:00Z",
+  "generatedAt": "2026-08-01T21:04:14Z",
   "stale": false,
   "source": {
-    "provider": "Yahoo Finance checked snapshot",
+    "provider": "Yahoo Finance via yfinance",
     "frequency": "Delayed end-of-day",
     "instrument": "QQQ"
   },
@@ -21,7 +21,7 @@
     "realizedVol21": 0.23811,
     "momentum21": -0.051271,
     "drawdown": -0.076946,
-    "volumeRatio21": 1.230804,
+    "volumeRatio21": 1.240422,
     "vix": 15.99
   },
   "signal": {
@@ -33,6 +33,7 @@
     "vt20Exposure": 0.83838,
     "compositeExposure": 0.79646,
     "stance": "Defensive",
+    "actorStateSha256": "92ddfa5b2430d78116c146305d306402d30af8eae65c6a38bd2b6ed3301424ed",
     "researchPosture": "Risk budget below full exposure",
     "explanation": "Trailing volatility set the VT10 anchor at 0.42x. The frozen ten-seed ensemble kept the volatility anchor nearly unchanged with a 0.95x residual, producing 0.40x."
   },
