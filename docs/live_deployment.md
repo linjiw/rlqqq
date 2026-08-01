@@ -1,121 +1,128 @@
 # Live Policy Deployment
 
-## Architecture
+## Boundary
 
-The public dashboard does not run the model or call a market-data API in the
-browser:
+The public page runs the official frozen v8 no-calendar policy in the
+browser. It does not call a market-data API. The two release paths are
+deliberately separate:
 
-1. The current ten-seed v8 no-calendar actor bundle and audited legacy v4
-   bundle live in `models/live/`.
-2. GitHub Actions fetches delayed end-of-day QQQ, VIX, 10-year, and 3-month
-   Treasury series.
-3. `scripts/update_live_signal.py` reproduces the full provider feature
-   frame, selects the 22 features named by the v8 artifact, replays each
-   actor from the 2026 reset, and writes `docs/assets/live-signal.json`.
-4. The same run appends one immutable row per market date to
-   `results/forward_log.csv`.
-5. GitHub Pages serves static HTML, JavaScript, and generated JSON.
+1. `models/live/ppo_v8_nocal_frozen_2023_v1.npz` is the source release. It
+   contains the shared training normalizer and all ten deterministic actors.
+2. `scripts/export_browser_policy.py` converts that NPZ, without retraining,
+   into one float64 ONNX graph with ten actors. The filename contains the
+   first 12 characters of its SHA-256; the manifest records the complete ONNX
+   and source-NPZ hashes, feature contract, training cutoff, and runtime.
+3. GitHub Actions generates delayed, static market inputs and an independent
+   Python replay. GitHub Pages serves those files with the model and runtime.
+4. The browser verifies the release, runs ONNX, and reveals the current
+   exposure only after its own replay agrees with the Python reference.
 
-This boundary keeps API credentials and model execution out of the client.
-The generated payload includes source date, generation time, model version,
-training cutoff, artifact checksum, and stale status.
+The static input contains 22 raw market features per date. The browser
+normalizes them with the manifest statistics, then builds an ONNX input of
+shape `[10, 24]`: 22 normalized values, each actor's own previous exposure in
+slot 23, and the common current VT10 anchor in slot 24. The previous-exposure
+state is independent for every actor. The output is `[10, 3]` logits for
+residual multipliers `0.5`, `1.0`, and `1.5`; the resulting core exposure is
+capped at `1.0`.
 
-## Frozen actor
+Because previous exposure is an observation, latest-row inference is not
+equivalent to the deployed policy. The browser starts all ten actor states at
+zero on the manifest activation date (`2026-01-02`) and sequentially replays
+the complete published input history through the latest close.
 
-`scripts/export_live_policy.py` is a release-time command. It retrains the
-calendar-free `ppo_v8_nocal` recipe through 2023-12-31 and exports only
-deterministic actor weights, model metadata, and normalization statistics.
-It refuses the export unless:
+## Browser runtime and fail-closed checks
 
-- pure-NumPy inference matches each in-memory SB3 actor on the same dates;
-- online feature construction exactly matches the checked training snapshot.
+The site vendors ONNX Runtime Web 1.27 and its WASM files under
+`docs/assets/ort/1.27.0/`. It uses the WASM execution provider, float64 tensors,
+and exactly one thread; no CDN runtime, quantized model, web worker, or
+cross-origin isolation is required.
 
-The daily job needs NumPy and pandas, not PyTorch, Gymnasium, or
-Stable-Baselines3. The v8 actor observation is 22 normalized market features
-plus current exposure and the causal VT10 anchor. The unchanged v4 artifact
-retains 24 features; its NumPy output is still checked against all ten saved
-SB3 holdout series.
+Before showing an exposure, `docs/assets/browser-inference.mjs` verifies:
 
-The v8 reference was selected from the 2010-2025 calendar ablation after the
-2026 holdout had already been opened. Its 2026 comparison is therefore an
-implementation-parity check, not a new untouched model test. Prospective v8
-evidence begins only after this release.
+- the runtime version, manifest schema, `[10, 24]` contract, model SHA-256,
+  golden-vector SHA-256, and static-input SHA-256;
+- matching model/source hashes and feature schema across the artifacts, the
+  manifest activation date in the raw replay, and one `asOf` date shared by
+  the raw replay, Python reference, and live metadata;
+- sorted replay dates, freshness, finite feature rows, and the exact 22-feature
+  order;
+- representative golden logits and actions, then every replay row against the
+  Python normalizer, logits, actions, actor exposures, latest aggregates, and
+  final actor-state hash.
 
-## Data source
+Actions must match exactly. Numeric tolerances are recorded in the manifest
+(`1e-6` for normalization/exposure and `1e-5` for logits). Any missing, stale,
+misdated, differently hashed, or out-of-tolerance artifact leaves the current
+exposure unavailable; the page never substitutes the Python-computed answer.
+The audited historical v4 animation remains usable independently.
 
-The initial public feed is Yahoo Finance through
-[`yfinance`](https://ranaroussi.github.io/yfinance/). It is suitable
-for this delayed research demonstration because it requires no client-side
-secret and matches the historical source. `yfinance` states that it is an
-unaffiliated open-source tool for research and education and that Yahoo data
-is intended for personal use. The dashboard therefore labels the feed
-delayed and research-grade, never real-time or execution-grade.
+## Scheduled static generation
 
-For a production service, replace `fetch_yahoo_market_frames()` with a
-credentialed provider adapter:
+The weekday Pages workflow runs at 22:37 UTC, after the US close and away from
+the busiest top-of-hour period. `scripts/update_live_signal.py` fetches delayed
+QQQ, VIX, 10-year, and 3-month Treasury data, constructs the 22 raw features,
+and writes:
 
-- [Alpaca](https://docs.alpaca.markets/us/docs/historical-stock-data-1)
-  supports split, dividend, spin-off, or all-adjusted stock bars. Its free IEX
-  feed represents a single exchange and roughly 2.5% of volume; the paid SIP
-  feed covers all US exchanges.
-- [Twelve Data](https://twelvedata.com/docs) requires an API key for full
-  access. Any key belongs in GitHub Actions secrets and must never be
-  serialized into frontend JavaScript.
+- `docs/assets/live-signal.json`, the latest metadata and Python summary;
+- `docs/assets/data/policy-input-history.json`, the browser's raw replay path;
+- `docs/assets/data/python-reference.json`, independent normalized features,
+  logits, actions, exposures, and final state;
+- one immutable decision row in `results/forward_log.csv`.
 
-Feature formulas, adjustment choices, and session calendars must still pass
-the snapshot parity test after a provider change.
+The workflow validates the frozen browser bundle and executes the same
+ORT-Web replay before deployment. A revision that changes an already logged
+actor-state hash, or any data/model/parity failure, stops the refresh. The
+browser also rechecks freshness when the page is opened because scheduled
+GitHub Actions are best-effort.
 
-## Schedule and failure behavior
+Yahoo Finance through `yfinance` is a delayed, research-grade source. A
+credentialed replacement belongs in the scheduled provider adapter and CI
+secrets, never in browser assets; its adjustment and session conventions must
+pass the same full-replay parity checks.
 
-`.github/workflows/pages.yml` refreshes at 22:37 UTC Monday through Friday,
-away from GitHub's busiest top-of-hour period. [GitHub documents scheduled
-Actions](https://docs.github.com/en/actions/reference/workflows-and-actions/events-that-trigger-workflows#schedule)
-as best-effort: runs can be delayed or dropped under load, execute only on
-the default branch, and are disabled in public repositories after 60 days
-without repository activity.
+## Local release and validation
 
-The frontend therefore derives freshness again at view time. A missing,
-invalid, or old payload produces an unavailable/stale state while the
-historical replay remains usable. The workflow fails before deployment when
-market data, feature construction, or actor inference is incomplete.
-Previously logged per-seed exposure state is checksummed; a provider revision
-that changes the published policy path also fails closed instead of silently
-rewriting history.
-
-## Local operation
-
-Rebuild the release artifact:
+Install the inference and browser-export dependencies:
 
 ```bash
-.venv/bin/python scripts/export_live_policy.py --workers 7 --force
+.venv/bin/pip install --requirement requirements-browser.txt
 ```
 
-Regenerate from the checked reproducibility snapshot:
+Regenerate the ONNX release only when the frozen NPZ changes:
+
+```bash
+.venv/bin/python scripts/export_browser_policy.py
+```
+
+For the checked snapshot, rebuild the static replay without touching the
+forward log, verify byte-for-byte release reproducibility, run the actual
+self-hosted browser runtime, and run the Python tests:
 
 ```bash
 .venv/bin/python scripts/update_live_signal.py \
   --provider checked \
-  --generated-at 2026-08-01T12:00:00Z
+  --no-log
+.venv/bin/python scripts/export_browser_policy.py --check
+node scripts/verify_browser_inference.mjs
+PYTHONPATH=src .venv/bin/python -m pytest -q \
+  tests/test_live.py tests/test_browser_contract.py
 ```
 
-Refresh from Yahoo:
+Use `.venv/bin/python scripts/update_live_signal.py` for a live Yahoo refresh.
+That command writes static browser inputs and the Python reference as well as
+the summary JSON.
 
-```bash
-.venv/bin/python scripts/update_live_signal.py
-```
+## Signal timing and research status
 
-The primary displayed stance is the frozen v8 no-calendar ensemble. The
-historical animation remains explicitly labeled as the audited v4 replay.
-The higher-return tilt-on-VT20 composite is shown separately and remains
-labeled as a post-hoc candidate. None of these outputs is personalized
-investment advice or an execution order.
+An `asOf: T` signal consumes only data available in the completed close at
+`T` and is labeled for the next close-to-close session. It has no subsequent
+return yet, so performance reported through `T` ends with the prior decision;
+the `T` target must not be counted until another close exists. It is a delayed
+research target, not an intraday price or an order executable at the already
+observed close.
 
-## Legacy v4 decision-date correction
-
-The original July 31 prose snapshot reported a 0.35x ensemble output. That was
-the saved July 30 action paired with July 31 market statistics: scored
-evaluation frames omit the last feature row because no next-day return exists.
-The deployed inference path does not need a realized future return, so it
-correctly evaluates the final close. On the checked July 31 features the
-frozen actors produce 0.40x (0.21x-0.63x), while retaining exact parity with
-all saved actions through July 30.
+The primary current stance is the frozen v8 ensemble. The historical animation
+is the audited v4 replay, and the tilt-on-VT20 composite remains a post-hoc
+candidate. The v8 reference was selected after the 2026 holdout had been
+opened, so its 2026 comparison is not a new untouched test. None of these
+outputs is personalized investment advice or an execution order.

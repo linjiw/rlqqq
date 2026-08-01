@@ -20,20 +20,36 @@ Rebuild its checked-in data bundle with:
 .venv/bin/python scripts/build_web_data.py
 ```
 
-The live signal is generated in GitHub Actions and served as static JSON; no
-market API key or model runtime is exposed in the browser. Rebuild the frozen
-v8 actor bundle and checked snapshot with:
+The latest policy panel runs the official frozen v8 ensemble in the browser.
+Its source is the checked-in NPZ release; `scripts/export_browser_policy.py`
+converts all ten actors into one hash-versioned, float64 ONNX model. The page
+uses the self-hosted ONNX Runtime Web 1.27 WASM runtime with one thread and
+replays the complete state path before it reveals the latest exposure.
+
+GitHub Actions still performs the scheduled delayed-market refresh. It writes
+static raw policy inputs, an independent Python reference, and the latest
+signal metadata, so the browser calls no market-data API and receives no API
+key. Verify the checked release and run the same end-to-end browser check
+locally with:
 
 ```bash
-.venv/bin/python scripts/export_live_policy.py --workers 7 --force
 .venv/bin/python scripts/update_live_signal.py \
   --provider checked \
-  --generated-at 2026-08-01T12:00:00Z
+  --no-log
+.venv/bin/python scripts/export_browser_policy.py --check
+node scripts/verify_browser_inference.mjs
+PYTHONPATH=src .venv/bin/python -m pytest -q \
+  tests/test_live.py tests/test_browser_contract.py
 ```
 
-See [docs/live_deployment.md](docs/live_deployment.md) for feature-parity
-controls, scheduling behavior, provider tradeoffs, and the production upgrade
-path.
+Any model hash, version, feature schema, replay date, golden-vector, Python
+parity, or freshness failure withholds the browser result instead of falling
+back to the precomputed answer. An `asOf` close produces an unscored target
+for the next close-to-close session; it is not part of performance through
+that same close.
+
+See [docs/live_deployment.md](docs/live_deployment.md) for the release
+contract, scheduled generation, fail-closed parity checks, and signal timing.
 
 ## Layout
 
@@ -64,10 +80,13 @@ scripts/
   run_pilot.py           # 8 folds x N seeds PPO experiment (parallel)
   analyze_pilot.py       # per-fold IQM vs baselines, bootstrap CIs, DSR
   export_live_policy.py  # reproducible SB3 -> NumPy frozen actor release
-  update_live_signal.py  # delayed market refresh + static signal/log output
+  export_browser_policy.py  # frozen NPZ -> hash-versioned float64 ONNX bundle
+  update_live_signal.py  # delayed refresh + static input/reference/signal data
+  verify_browser_inference.mjs  # local ORT-Web replay and parity check
 tests/
   test_env.py            # incl. buy-and-hold reproduction invariant
   test_live.py           # feature, actor, schema, and append-only log parity
+  test_browser_contract.py  # immutable ONNX/runtime/replay release contract
 results/
   registry.jsonl         # trial registry (every scored run, for DSR)
   series/                # per-run test exposure/return series
