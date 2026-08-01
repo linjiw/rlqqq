@@ -1,0 +1,107 @@
+{
+  "downloaded_on": "2026-07-31",
+  "entries": [
+    {
+      "source": "yfinance",
+      "symbol": "SPY",
+      "file": "yf_SPY.csv",
+      "rows": 8433,
+      "start": "1993-01-29",
+      "end": "2026-07-31",
+      "sha256": "7afce0acf9f76d74012d055051b026acdd20e502ae4f281618a89350b74f47e6"
+    },
+    {
+      "source": "yfinance",
+      "symbol": "QQQ",
+      "file": "yf_QQQ.csv",
+      "rows": 6891,
+      "start": "1999-03-10",
+      "end": "2026-07-31",
+      "sha256": "e04483a497f6398a8ae03c36b6fbacc6c8f1225a814d1b09da0e7052a4dc54c6"
+    },
+    {
+      "source": "yfinance",
+      "symbol": "VOO",
+      "file": "yf_VOO.csv",
+      "rows": 3997,
+      "start": "2010-09-09",
+      "end": "2026-07-31",
+      "sha256": "96ea6945a5ef03fc7d7ae3e3c8381d4d43d6b8aecf6a872385da7695bce43c99"
+    },
+    {
+      "source": "yfinance",
+      "symbol": "^GSPC",
+      "file": "yf_IDX_GSPC.csv",
+      "rows": 24762,
+      "start": "1927-12-30",
+      "end": "2026-07-31",
+      "sha256": "07ece2d46e4ee62bbe1f39b93a6730de7883e57a72af3d2311eeb705e4ae1230"
+    },
+    {
+      "source": "yfinance",
+      "symbol": "^NDX",
+      "file": "yf_IDX_NDX.csv",
+      "rows": 10287,
+      "start": "1985-10-01",
+      "end": "2026-07-31",
+      "sha256": "9924f42b5cda096d4d98915956c8ccb8a40a23ed20d68a74bc73e4ad56ca1482"
+    },
+    {
+      "source": "yfinance",
+      "symbol": "^VIX",
+      "file": "yf_IDX_VIX.csv",
+      "rows": 9213,
+      "start": "1990-01-02",
+      "end": "2026-07-31",
+      "sha256": "a5ca2777a7c1f9ef60271f6b9ce6cf28672eefa65e3978b2476d553dcb624be6"
+    },
+    {
+      "source": "yfinance",
+      "symbol": "TLT",
+      "file": "yf_TLT.csv",
+      "rows": 6040,
+      "start": "2002-07-30",
+      "end": "2026-07-31",
+      "sha256": "0ed1213fcb24bacac6ecb0f36408c3cc8eb5ca132cf778c939dc4c13f58c41c7"
+    },
+    {
+      "source": "yfinance",
+      "symbol": "GLD",
+      "file": "yf_GLD.csv",
+      "rows": 5458,
+      "start": "2004-11-18",
+      "end": "2026-07-31",
+      "sha256": "63bd0428d19e317b224f9ae31fbcfbc22e2fa39d74c5052cfa1439c585729fce"
+    },
+    {
+      "source": "yfinance",
+      "symbol": "^TNX",
+      "desc": "10y yield x10",
+      "file": "yf_IDX_TNX.csv",
+      "rows": 16132,
+      "start": "1962-01-02",
+      "end": "2026-07-31",
+      "sha256": "e5471c663ef3e314949fb827ac53346d12589907c718caf8c757a5bbf1ec2477"
+    },
+    {
+      "source": "yfinance",
+      "symbol": "^IRX",
+      "desc": "13w tbill yield x10",
+      "file": "yf_IDX_IRX.csv",
+      "rows": 16629,
+      "start": "1960-01-04",
+      "end": "2026-07-31",
+      "sha256": "b87a136e93fe06956d97b1aa7010ab4f6ed0fafd71cb1558d91412dbfb7ccf99"
+    },
+    {
+      "source": "yfinance",
+      "symbol": "^FVX",
+      "desc": "5y yield x10",
+      "file": "yf_IDX_FVX.csv",
+      "rows": 16132,
+      "start": "1962-01-02",
+      "end": "2026-07-31",
+      "sha256": "8ac0a27075b7eb945a1280cae5d65f5bf7f38ba4f3ddd808e6915f1cd5d0dde5"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "design_note": "Anchored walk-forward. Train expands from start; validation is the 2y after train; test is the 2y after validation. No data after the test fold start may influence any modeling choice for that fold. Embargo: 21 trading days between train/val and val/test.",
+  "embargo_days": 21,
+  "folds": [
+    {
+      "name": "F1",
+      "train_end": "2007-12-31",
+      "val_end": "2009-12-31",
+      "test_end": "2011-12-31"
+    },
+    {
+      "name": "F2",
+      "train_end": "2009-12-31",
+      "val_end": "2011-12-31",
+      "test_end": "2013-12-31"
+    },
+    {
+      "name": "F3",
+      "train_end": "2011-12-31",
+      "val_end": "2013-12-31",
+      "test_end": "2015-12-31"
+    },
+    {
+      "name": "F4",
+      "train_end": "2013-12-31",
+      "val_end": "2015-12-31",
+      "test_end": "2017-12-31"
+    },
+    {
+      "name": "F5",
+      "train_end": "2015-12-31",
+      "val_end": "2017-12-31",
+      "test_end": "2019-12-31"
+    },
+    {
+      "name": "F6",
+      "train_end": "2017-12-31",
+      "val_end": "2019-12-31",
+      "test_end": "2021-12-31"
+    },
+    {
+      "name": "F7",
+      "train_end": "2019-12-31",
+      "val_end": "2021-12-31",
+      "test_end": "2023-12-31"
+    },
+    {
+      "name": "F8",
+      "train_end": "2021-12-31",
+      "val_end": "2023-12-31",
+      "test_end": "2025-12-31"
+    }
+  ],
+  "holdout": {
+    "note": "2026-01-01 .. present is a final untouched holdout, used once.",
+    "start": "2026-01-01"
+  }
+}
