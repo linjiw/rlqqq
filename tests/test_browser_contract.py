@@ -142,7 +142,10 @@ def test_published_replay_is_hash_bound_and_recursively_reproducible():
         exposure = np.clip(
             baselines[index] * RESIDUAL_MULTIPLIERS[actions], 0.0, 1.0
         )
-        np.testing.assert_allclose(logits, expected_logits[index], rtol=0, atol=0)
+        # libm tanh can differ by a few ULPs across runner architectures.
+        np.testing.assert_allclose(
+            logits, expected_logits[index], rtol=0, atol=1e-12
+        )
         np.testing.assert_array_equal(actions, expected_actions[index])
         np.testing.assert_allclose(
             exposure, expected_exposure[index], rtol=0, atol=0
