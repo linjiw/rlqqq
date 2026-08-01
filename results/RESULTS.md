@@ -171,6 +171,34 @@ Three lessons:
 3. The CAGR gap to B&H was never about intelligence — it's an exposure
    budget. Leverage closes it mechanically; learning doesn't.
 
+## v7: dataset scaling + leverage-in-RL (2026-08-01)
+
+**Tilt-transfer (free, from saved series):** applying the v4 agents' learned
+multiplier to the leveraged vt20-cap1.5 baseline gives **CAGR 23.4% /
+Sharpe 1.055 vs B&H 20.7% / 0.947** — the best CAGR+Sharpe combination in
+the study (ΔSh +0.11 [−0.08,+0.29], ΔCAGR +2.8pp [−1.5,+7.0], not sig;
+post-hoc construction, caveat logged). See `live_decision_snapshot.md`.
+
+**Dataset scaling (pooled SPY+NDX+GSPC training, 2–4× data incl. pre-1999
+regimes):** ppo_v7_pool Sharpe 1.011 vs v4's 1.047 (ΔSh −0.03 [−0.11,+0.05],
+ΔCAGR −0.9pp, borderline significantly *negative*). **Pooling cross-asset
+data does not help and slightly hurts** — QQQ-specific training data wins;
+cross-asset regularization was already provided by bootstrap paths.
+Combined with v5 (compute/model scaling neutral): **both scaling axes are
+now confirmed saturated. The binding constraint is signal, not scale.**
+
+**Leverage inside RL (ppo_v7_pool_lever, multiplier cap 1.5 on vt10):** the
+trained agent stays defensive (avg_w 0.61, barely uses the leverage
+headroom) — Sharpe 0.966, worse than v4. The log-wealth objective on
+bootstrap-diversified paths (which include crash paths) rationally declines
+to lever a defensive baseline. End-to-end leverage learning underperforms
+the simple transfer construction above.
+
+**Live decision snapshot (2026-07-31, QQQ at 24% vol, −7.7% off peak):**
+vt10 rule → 0.42 exposure; vt20-cap1.5 rule → 0.84; v4 agent ensemble →
+0.35 (0.84× its baseline — mildly defensive; its contrarian add-exposure
+signal triggers in deeper drawdowns than this).
+
 ## Honest bottom line (as of v3)
 
 Everything found so far is consistent with the literature synthesis: RL
