@@ -5,6 +5,19 @@ agent trading NASDAQ-100 / S&P 500 products (QQQ, SPY, VOO and the underlying
 indices) can outperform buy-and-hold and dollar-cost-averaging baselines,
 after realistic costs, with statistically honest evaluation.
 
+## Interactive dashboard
+
+The [RLQQQ policy replay](https://linjiw.github.io/rlqqq/) animates the
+2010-2025 walk-forward decisions, compares normalized wealth with QQQ and
+SPY, and exposes the volatility base and learned residual tilt at every date.
+It also exports the replay as WebM video or a PNG frame.
+
+Rebuild its checked-in data bundle with:
+
+```bash
+.venv/bin/python scripts/build_web_data.py
+```
+
 ## Layout
 
 ```
