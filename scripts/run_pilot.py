@@ -45,6 +45,11 @@ CONFIGS = {
     "ppo_v5_lawa": {"n_boot_paths": 3, "residual": True,
                     "switch_penalty_bps": 5.0, "ent_coef": 0.005,
                     "lawa_k": 8},
+    # v6 EXTENSION arm (not core study): leverage cap 1.5x, financed at
+    # T-bill + 50bp. Attacks the CAGR gap; fair comparison = leveraged VT.
+    "ppo_v6_lever": {"n_boot_paths": 3, "residual": True,
+                     "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                     "max_exposure": 1.5},
 }
 
 

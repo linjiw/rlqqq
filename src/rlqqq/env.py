@@ -50,13 +50,23 @@ def portfolio_returns(
     cash: np.ndarray,
     cost_bps: float,
     w_init: float = 0.0,
+    borrow_spread_bps: float = 50.0,
 ) -> np.ndarray:
     """Vectorized accounting identity. exposure[t] is the target held over
-    t -> t+1. Used by baselines and the independent backtest cross-check."""
+    t -> t+1. Used by baselines and the independent backtest cross-check.
+
+    Supports leverage: for w > 1 the (w - 1) financed portion pays
+    cash + borrow_spread instead of earning cash (margin at T-bill + spread,
+    roughly IBKR-tier financing)."""
     w = np.asarray(exposure, dtype=np.float64)
     prev = np.concatenate([[w_init], w[:-1]])
     turnover = np.abs(w - prev)
-    return w * ret + (1.0 - w) * cash - (cost_bps / 1e4) * turnover
+    cash_leg = np.where(
+        w <= 1.0,
+        (1.0 - w) * cash,
+        -(w - 1.0) * (cash + borrow_spread_bps / 1e4 / 252.0),
+    )
+    return w * ret + cash_leg - (cost_bps / 1e4) * turnover
 
 
 class ExposureTradingEnv(gym.Env):
@@ -80,6 +90,7 @@ class ExposureTradingEnv(gym.Env):
         reward_lambda: float = 0.0,
         residual: bool = False,
         switch_penalty_bps: float = 0.0,
+        max_exposure: float = 1.0,
     ):
         super().__init__()
         self.data = data
@@ -95,6 +106,9 @@ class ExposureTradingEnv(gym.Env):
         # residual mode: actions are multipliers on a causal vol-target
         # baseline; action index 1 (x1.0) IS the baseline policy.
         self.residual = residual
+        # max_exposure > 1 lets the multiplier produce leveraged exposure
+        # (the excess over 1.0 is financed at cash + borrow spread).
+        self.max_exposure = float(max_exposure)
         # training-only extra cost per unit turnover (bps) - shapes the policy
         # toward fewer switches; realized accounting still uses cost_bps.
         self.switch_penalty_bps = float(switch_penalty_bps)
@@ -130,7 +144,8 @@ class ExposureTradingEnv(gym.Env):
     def _action_to_exposure(self, action: Any) -> float:
         if self.residual:
             mult = RESIDUAL_MULTIPLIERS[int(action)]
-            return float(np.clip(mult * self._baseline[self._t], 0.0, 1.0))
+            return float(np.clip(mult * self._baseline[self._t], 0.0,
+                                 self.max_exposure))
         if self.discrete:
             return float(EXPOSURE_LEVELS[int(action)])
         return float(np.clip(np.asarray(action).reshape(-1)[0], 0.0, 1.0))
@@ -156,9 +171,13 @@ class ExposureTradingEnv(gym.Env):
         w = self._action_to_exposure(action)
         t = self._t
         turnover = abs(w - self._w)
+        if w <= 1.0:
+            cash_leg = (1.0 - w) * self.data.cash[t]
+        else:
+            cash_leg = -(w - 1.0) * (self.data.cash[t] + 50.0 / 1e4 / 252.0)
         net = (
             w * self.data.ret[t]
-            + (1.0 - w) * self.data.cash[t]
+            + cash_leg
             - (self.cost_bps / 1e4) * turnover
         )
         reward = (float(np.log1p(net))
@@ -183,12 +202,13 @@ def run_policy(
     discrete: bool = True,
     deterministic: bool = True,
     residual: bool = False,
+    max_exposure: float = 1.0,
 ) -> dict:
     """Roll a trained SB3 policy over a full data slice once and return the
     exposure series + net daily returns (via the shared accounting identity)."""
     env = ExposureTradingEnv(env_data, normalizer, cost_bps=cost_bps,
                              discrete=discrete, episode_len=None,
-                             residual=residual)
+                             residual=residual, max_exposure=max_exposure)
     obs, _ = env.reset()
     exposures = np.empty(len(env_data))
     for i in range(len(env_data)):

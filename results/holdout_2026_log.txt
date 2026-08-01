@@ -1,0 +1,27 @@
+25 holdout training runs (train<=2023-12-31)
+[ 1/25] holdout_v2_boot s4: 2026_sh= 0.29 2026_cagr= 0.070
+[ 2/25] holdout_v2_boot s1: 2026_sh= 0.70 2026_cagr= 0.148
+[ 3/25] holdout_v2_boot s5: 2026_sh=-0.05 2026_cagr= 0.016
+[ 4/25] holdout_v2_boot s3: 2026_sh=-0.49 2026_cagr=-0.051
+[ 5/25] holdout_v2_boot s2: 2026_sh= 1.48 2026_cagr= 0.313
+[ 6/25] holdout_v2_boot s6: 2026_sh=-0.71 2026_cagr=-0.066
+[ 7/25] holdout_v2_boot s0: 2026_sh= 1.49 2026_cagr= 0.336
+[ 8/25] holdout_v2_boot s7: 2026_sh=-0.36 2026_cagr=-0.013
+[ 9/25] holdout_v2_boot s9: 2026_sh= 0.58 2026_cagr= 0.137
+[10/25] holdout_v2_boot s10: 2026_sh= 1.80 2026_cagr= 0.255
+[11/25] holdout_v2_boot s8: 2026_sh= 0.58 2026_cagr= 0.110
+[12/25] holdout_v2_boot s11: 2026_sh=-0.30 2026_cagr=-0.023
+[13/25] holdout_v2_boot s12: 2026_sh=-0.58 2026_cagr=-0.048
+[14/25] holdout_v2_boot s13: 2026_sh= 0.67 2026_cagr= 0.135
+[15/25] holdout_v4_resid s2: 2026_sh= 0.39 2026_cagr= 0.087
+[16/25] holdout_v2_boot s14: 2026_sh= 1.14 2026_cagr= 0.207
+[17/25] holdout_v4_resid s1: 2026_sh= 0.56 2026_cagr= 0.103
+[18/25] holdout_v4_resid s0: 2026_sh= 0.93 2026_cagr= 0.155
+[19/25] holdout_v4_resid s3: 2026_sh= 0.79 2026_cagr= 0.123
+[20/25] holdout_v4_resid s4: 2026_sh= 0.75 2026_cagr= 0.140
+[21/25] holdout_v4_resid s5: 2026_sh= 0.68 2026_cagr= 0.113
+[22/25] holdout_v4_resid s7: 2026_sh= 0.98 2026_cagr= 0.156
+[23/25] holdout_v4_resid s6: 2026_sh= 1.08 2026_cagr= 0.154
+[24/25] holdout_v4_resid s8: 2026_sh= 0.46 2026_cagr= 0.082
+[25/25] holdout_v4_resid s9: 2026_sh= 0.12 2026_cagr= 0.043
+done in 4.4 min

@@ -163,13 +163,14 @@ def train_and_eval_one(
     discrete = hp.get("discrete", True)
     residual = hp.get("residual", False)
     switch_penalty = hp.get("switch_penalty_bps", 0.0)
+    max_exposure = hp.get("max_exposure", 1.0)
 
     def mk(i):
         return lambda: ExposureTradingEnv(
             train_sets[i], norm, cost_bps=cost_bps, discrete=discrete,
             episode_len=episode_len, seed=seed * 1000 + i,
             reward_lambda=reward_lambda, residual=residual,
-            switch_penalty_bps=switch_penalty)
+            switch_penalty_bps=switch_penalty, max_exposure=max_exposure)
 
     venv = DummyVecEnv([mk(i) for i in range(n_envs)])
     model = make_ppo(venv, seed, hp)
@@ -207,9 +208,9 @@ def train_and_eval_one(
         model.learn(total_timesteps=timesteps, progress_bar=False)
 
     val_run = run_policy(val, norm, model, cost_bps=cost_bps, discrete=discrete,
-                         residual=residual)
+                         residual=residual, max_exposure=max_exposure)
     test_run = run_policy(test, norm, model, cost_bps=cost_bps, discrete=discrete,
-                          residual=residual)
+                          residual=residual, max_exposure=max_exposure)
     val_p = perf(val_run["net"], val.cash)
     test_p = perf(test_run["net"], test.cash)
     test_to = turnover_stats(test_run["exposure"])
