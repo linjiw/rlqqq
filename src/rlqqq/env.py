@@ -91,6 +91,7 @@ class ExposureTradingEnv(gym.Env):
         residual: bool = False,
         switch_penalty_bps: float = 0.0,
         max_exposure: float = 1.0,
+        vt_target: float = 0.10,
     ):
         super().__init__()
         self.data = data
@@ -113,7 +114,8 @@ class ExposureTradingEnv(gym.Env):
         # toward fewer switches; realized accounting still uses cost_bps.
         self.switch_penalty_bps = float(switch_penalty_bps)
         self._rng = np.random.default_rng(seed)
-        self._baseline = causal_vol_target(data.ret) if residual else None
+        self._baseline = (causal_vol_target(data.ret, target=vt_target)
+                          if residual else None)
 
         n_feat = data.feat.shape[1]
         # observation = normalized features + current exposure (+ baseline w)
@@ -203,12 +205,14 @@ def run_policy(
     deterministic: bool = True,
     residual: bool = False,
     max_exposure: float = 1.0,
+    vt_target: float = 0.10,
 ) -> dict:
     """Roll a trained SB3 policy over a full data slice once and return the
     exposure series + net daily returns (via the shared accounting identity)."""
     env = ExposureTradingEnv(env_data, normalizer, cost_bps=cost_bps,
                              discrete=discrete, episode_len=None,
-                             residual=residual, max_exposure=max_exposure)
+                             residual=residual, max_exposure=max_exposure,
+                             vt_target=vt_target)
     obs, _ = env.reset()
     exposures = np.empty(len(env_data))
     for i in range(len(env_data)):

@@ -50,6 +50,11 @@ CONFIGS = {
     "ppo_v6_lever": {"n_boot_paths": 3, "residual": True,
                      "switch_penalty_bps": 5.0, "ent_coef": 0.005,
                      "max_exposure": 1.5},
+    # v6b: residual on a 20%-vol-target baseline (avg_w ~1.17 with 1.5x cap)
+    # - matches B&H's return level so the agent's tilt fights on CAGR too.
+    "ppo_v6_vt20": {"n_boot_paths": 3, "residual": True,
+                    "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                    "max_exposure": 1.5, "vt_target": 0.20},
 }
 
 

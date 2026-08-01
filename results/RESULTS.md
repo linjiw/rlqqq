@@ -138,6 +138,39 @@ drawdown states (+5%/yr in those states), pay a small FOMO tax in calm
 bulls. Deviation from baseline >0.1 on 27% of days; +0.8%/yr total value
 over pure vol-targeting; survives out-of-era.
 
+## 2026 holdout (SPENT) + leverage extension (2026-08-01)
+
+**One-shot 2026 holdout** (`holdout_2026_report.md`): pre-registered blend on
+QQQ 2026 YTD (calm bull, +12.5%): FAILs the Sharpe criterion (0.67 vs B&H
+0.89), PASSes MaxDD (−8.5% vs −11.7%). Beat DCA on Sharpe. Behaved exactly
+as the regime profile predicts; near-zero power as pre-registered. Holdout
+is now spent.
+
+**Leverage extension (clearly labeled, not core study).** Cap 1.5×,
+financing at T-bill+50bp, QQQ 2010–2025:
+
+| policy | CAGR | Sharpe | MaxDD |
+|---|---|---|---|
+| buy-and-hold | 20.7% | 0.947 | −29.6% |
+| **vt20 rule, cap 1.5 (no learning!)** | **22.2%** | **1.041** | **−21.9%** |
+| agent residual on vt10, cap 1.5 | 13.3% | 1.040 | −12.0% |
+| agent residual on vt20, cap 1.5 | 19.1% | 1.010 | −21.8% |
+
+Three lessons:
+1. **Leveraged vol-targeting alone beats B&H on BOTH CAGR and Sharpe**
+   (22.2%/1.04 vs 20.7%/0.95) — the Moreira-Muir "vol-managed portfolios"
+   result reproduced on QQQ with honest financing costs. If "beat
+   buy-and-hold" is the goal and modest leverage is allowed, a 5-line rule
+   does it; dCAGR vs B&H not yet significance-tested but Sharpe edge is
+   consistent across the frontier (targets 10%→24% all >1.0).
+2. The agent's learned tilt adds value on the *defensive* baseline
+   (vt10+cap1.5: +0.03 Sh, +0.6pp CAGR over its fair baseline) but
+   SUBTRACTS on the aggressive one (vt20: −0.02 Sh, −3.1pp CAGR) — the
+   contrarian buy-weakness signal lives in low-exposure states; when the
+   baseline is already near-full exposure there is nothing to add.
+3. The CAGR gap to B&H was never about intelligence — it's an exposure
+   budget. Leverage closes it mechanically; learning doesn't.
+
 ## Honest bottom line (as of v3)
 
 Everything found so far is consistent with the literature synthesis: RL
