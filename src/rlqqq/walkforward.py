@@ -150,15 +150,29 @@ def train_and_eval_one(
     norm = Normalizer.fit(train.feat)
     reward_lambda = hp.get("reward_lambda", 0.0)
 
+    # Dataset scaling: pool other symbols' train windows (same features,
+    # same causal rules) alongside the target symbol. Normalizer is fit on
+    # the pooled training features.
+    pool_symbols = hp.get("pool_symbols", [])
+    pooled = [train]
+    if pool_symbols:
+        for sym in pool_symbols:
+            other = load_market(sym, with_har=False)
+            o_train = other.slice(fold.train_start, fold.train_end)
+            if len(o_train) > 500:
+                pooled.append(o_train)
+        norm = Normalizer.fit(np.concatenate([p.feat for p in pooled]))
+
     # WP-D: mix in stationary-bootstrap synthetic paths (generated from the
     # train window only). n_boot_paths > 0 dedicates that many parallel envs
-    # to synthetic paths; the rest run the real path.
+    # to synthetic paths; the rest cycle over the pooled real paths.
     n_boot = hp.get("n_boot_paths", 0)
-    train_sets = [train] * n_envs
+    train_sets = [pooled[i % len(pooled)] for i in range(n_envs)]
     if n_boot > 0:
         from .synth import bootstrap_path
         for i in range(min(n_boot, n_envs - 1)):
-            train_sets[i + 1] = bootstrap_path(train, seed=seed * 100 + i)
+            src = pooled[(i + 1) % len(pooled)]
+            train_sets[i + 1] = bootstrap_path(src, seed=seed * 100 + i)
 
     discrete = hp.get("discrete", True)
     residual = hp.get("residual", False)

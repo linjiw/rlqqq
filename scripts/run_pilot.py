@@ -55,6 +55,17 @@ CONFIGS = {
     "ppo_v6_vt20": {"n_boot_paths": 3, "residual": True,
                     "switch_penalty_bps": 5.0, "ent_coef": 0.005,
                     "max_exposure": 1.5, "vt_target": 0.20},
+    # v7a dataset scaling: pool SPY+NDX+GSPC train windows (2-4x data,
+    # incl. regimes QQQ never saw) behind the winning v4 recipe.
+    "ppo_v7_pool": {"n_boot_paths": 3, "residual": True,
+                    "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                    "pool_symbols": ["SPY", "NDX", "GSPC"]},
+    # v7b: pooled data + leveraged defensive baseline (the tilt-transfer
+    # insight, learned end-to-end: vt10 signal headroom, 1.5x cap).
+    "ppo_v7_pool_lever": {"n_boot_paths": 3, "residual": True,
+                          "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                          "pool_symbols": ["SPY", "NDX", "GSPC"],
+                          "max_exposure": 1.5},
 }
 
 
