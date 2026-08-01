@@ -1,6 +1,25 @@
 (() => {
   "use strict";
 
+  const dashboardScriptUrl = document.currentScript?.src
+    ? new URL(document.currentScript.src, document.baseURI)
+    : new URL("assets/dashboard.js", document.baseURI);
+  const assetUrl = (path) => new URL(path, dashboardScriptUrl);
+  const diagnostics = {
+    schemaVersion: 1,
+    status: "verifying",
+    failClosed: true,
+    exposureVisible: false,
+    asOf: null,
+    error: null,
+    model: null,
+    signal: null,
+    voteCounts: null,
+    verification: { status: "verifying" },
+    parity: null,
+  };
+  window.__RLQQQ_DIAGNOSTICS__ = diagnostics;
+
   const COLORS = {
     ink: "#18211e",
     muted: "#68736e",
@@ -28,6 +47,7 @@
   const state = {
     data: null,
     liveData: null,
+    liveVerification: null,
     dates: [],
     timestamps: [],
     index: 0,
@@ -89,7 +109,7 @@
     loadLiveSignal();
 
     try {
-      const response = await fetch("assets/policy-data.json");
+      const response = await fetch(assetUrl("policy-data.json"));
       if (!response.ok) {
         throw new Error(`Data request failed with status ${response.status}`);
       }
@@ -116,9 +136,21 @@
       "live-status",
       "live-as-of",
       "live-grid",
+      "browser-verification",
+      "browser-verification-status",
+      "browser-verification-detail",
+      "verification-model",
+      "verification-source",
+      "verification-hash",
+      "verification-date",
+      "verification-vote-low",
+      "verification-vote-middle",
+      "verification-vote-high",
+      "verification-vote-total",
       "live-stance",
       "live-learned-target",
       "live-posture",
+      "live-gauge",
       "live-gauge-fill",
       "live-gauge-range",
       "live-vt10",
@@ -210,13 +242,22 @@
 
   async function loadLiveSignal() {
     try {
-      const response = await fetch("assets/live-signal.json", { cache: "no-cache" });
+      const response = await fetch(assetUrl("live-signal.json"), { cache: "no-store" });
       if (!response.ok) {
         throw new Error(`Live signal request failed with status ${response.status}`);
       }
       const payload = await response.json();
       validateLiveSignal(payload);
-      state.liveData = payload;
+      const inferenceModule = await import(assetUrl("browser-inference.mjs").href);
+      const result = await inferenceModule.verifyBrowserPolicy({ liveSignal: payload });
+      const verifiedSignal = {
+        ...payload.signal,
+        ...result.signal,
+        actorStateSha256: result.actorStateSha256,
+      };
+      state.liveData = { ...payload, signal: verifiedSignal };
+      state.liveVerification = result;
+      renderBrowserVerification();
       renderLiveSignal();
       startLiveChartAnimation();
     } catch (error) {
@@ -230,17 +271,121 @@
     if (
       payload?.schemaVersion !== 1 ||
       !payload.asOf ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(payload.asOf) ||
+      !payload.generatedAt ||
+      typeof payload.stale !== "boolean" ||
+      !payload.source?.provider ||
       !payload.market ||
+      !payload.model?.version ||
       !payload.model?.displayName ||
+      payload.model?.featureCount !== 22 ||
+      payload.model?.ensembleSize !== 10 ||
+      !/^[a-f0-9]{64}$/.test(payload.model?.artifactSha256 || "") ||
       !signal ||
       !history ||
       !Array.isArray(history.dates) ||
       history.dates.length < 2 ||
       history.learnedMean.length !== history.dates.length ||
-      history.vt10Exposure.length !== history.dates.length
+      history.learnedMin.length !== history.dates.length ||
+      history.learnedMax.length !== history.dates.length ||
+      history.vt10Exposure.length !== history.dates.length ||
+      history.compositeExposure.length !== history.dates.length
     ) {
       throw new Error("Live signal schema is incomplete");
     }
+    const numericValues = [
+      payload.market.price,
+      payload.market.dailyChange,
+      payload.market.realizedVol21,
+      payload.market.momentum21,
+      payload.market.drawdown,
+      payload.market.vix,
+      signal.vt10Exposure,
+      signal.learnedMean,
+      signal.learnedMin,
+      signal.learnedMax,
+      signal.tiltMultiplier,
+      signal.vt20Exposure,
+      signal.compositeExposure,
+      ...history.learnedMean,
+      ...history.learnedMin,
+      ...history.learnedMax,
+      ...history.vt10Exposure,
+      ...history.compositeExposure,
+    ];
+    if (!numericValues.every(Number.isFinite)) {
+      throw new Error("Live signal contains a non-finite value");
+    }
+    const sourceDate = new Date(`${payload.asOf}T23:59:59Z`);
+    const generatedDate = new Date(payload.generatedAt);
+    const marketAgeDays = (Date.now() - sourceDate.getTime()) / 86_400_000;
+    const generatedAgeHours = (Date.now() - generatedDate.getTime()) / 3_600_000;
+    if (
+      payload.stale === true ||
+      !Number.isFinite(sourceDate.getTime()) ||
+      !Number.isFinite(generatedDate.getTime()) ||
+      marketAgeDays < -1 ||
+      marketAgeDays > 6 ||
+      generatedAgeHours < -24 ||
+      generatedAgeHours > 120
+    ) {
+      throw new Error("The latest generated market signal is stale");
+    }
+  }
+
+  function renderBrowserVerification() {
+    const result = state.liveVerification;
+    const checks = result.verification;
+    const votes = result.voteCounts;
+    const totalVotes = votes.reduce((sum, value) => sum + value, 0);
+    const sourceDate = new Date(`${state.liveData.asOf}T00:00:00Z`);
+
+    elements.browserVerification.className = "browser-verification is-verified";
+    elements.browserVerification.setAttribute("aria-busy", "false");
+    elements.browserVerificationStatus.innerHTML =
+      '<i data-lucide="badge-check" aria-hidden="true"></i>ONNX verified';
+    elements.verificationModel.textContent =
+      `${state.liveData.model.displayName} / ${totalVotes} actors`;
+    elements.verificationSource.textContent =
+      `NPZ ${result.model.sourceArtifactSha256.slice(0, 12)}…`;
+    elements.verificationHash.textContent =
+      `ONNX ${result.model.onnxArtifactSha256.slice(0, 12)}…`;
+    elements.verificationDate.textContent = dateFormatter.format(sourceDate);
+    elements.verificationVoteLow.textContent = String(votes[0]);
+    elements.verificationVoteMiddle.textContent = String(votes[1]);
+    elements.verificationVoteHigh.textContent = String(votes[2]);
+    elements.verificationVoteTotal.textContent = `${totalVotes} / 10`;
+    elements.browserVerificationDetail.textContent =
+      `ORT-Web ${result.model.runtimeVersion} WASM replayed ${checks.rowCount} sessions ` +
+      `with ten independent actor states; ${checks.actionMatches}/${checks.actionChecks} actions matched. ` +
+      `Max |Δlogit| ${formatScientific(checks.maximumLogitError)}; ` +
+      `minimum action margin ${formatScientific(checks.minimumMargin)}.`;
+
+    Object.assign(diagnostics, {
+      status: "verified",
+      failClosed: true,
+      exposureVisible: true,
+      asOf: state.liveData.asOf,
+      error: null,
+      model: result.model,
+      signal: result.signal,
+      voteCounts: [...votes],
+      actions: [...result.actions],
+      verification: { ...checks },
+      parity: {
+        modelHash: result.verification.modelHashVerified,
+        actions: checks.actionMatches === checks.actionChecks,
+        normalizer: checks.maximumNormalizerError,
+        logits: checks.maximumLogitError,
+        exposures: checks.maximumExposureError,
+      },
+    });
+  }
+
+  function formatScientific(value) {
+    if (!Number.isFinite(value)) return "--";
+    if (value === 0) return "0";
+    return value.toExponential(2);
   }
 
   function renderLiveSignal() {
@@ -267,7 +412,12 @@
     elements.liveSeedRange.textContent =
       `${signal.learnedMin.toFixed(2)}-${signal.learnedMax.toFixed(2)}x`;
     elements.liveComposite.textContent = `${signal.compositeExposure.toFixed(2)}x`;
-    elements.liveExplanation.textContent = signal.explanation;
+    const votes = state.liveVerification.voteCounts;
+    elements.liveExplanation.textContent =
+      `This browser replayed the frozen ten-actor policy. VT10 set a ` +
+      `${signal.vt10Exposure.toFixed(2)}x anchor; votes were ` +
+      `${votes[0]}/${votes[1]}/${votes[2]} for the 0.5x/1.0x/1.5x residuals, ` +
+      `producing a ${signal.learnedMean.toFixed(2)}x core target.`;
 
     elements.liveGaugeFill.style.width =
       `${clamp(signal.learnedMean / 1.5, 0, 1) * 100}%`;
@@ -275,6 +425,11 @@
       `${clamp(signal.learnedMin / 1.5, 0, 1) * 100}%`;
     elements.liveGaugeRange.style.width =
       `${clamp((signal.learnedMax - signal.learnedMin) / 1.5, 0, 1) * 100}%`;
+    elements.liveGauge.setAttribute(
+      "aria-label",
+      `Verified learned exposure ${signal.learnedMean.toFixed(2)} times, ` +
+      `seed range ${signal.learnedMin.toFixed(2)} to ${signal.learnedMax.toFixed(2)} times`,
+    );
 
     elements.liveStance.textContent = signal.stance;
     elements.liveStance.className = "stance-badge";
@@ -304,16 +459,87 @@
 
   function showLiveError(error) {
     console.error(error);
+    const reason = safeErrorMessage(error);
+    state.liveData = null;
+    state.liveVerification = null;
+    if (state.liveAnimationFrame) {
+      cancelAnimationFrame(state.liveAnimationFrame);
+      state.liveAnimationFrame = null;
+    }
     elements.liveGrid.setAttribute("aria-busy", "false");
     elements.liveStatus.className = "live-status is-error";
     elements.liveStatus.innerHTML =
       '<i data-lucide="triangle-alert" aria-hidden="true"></i>Signal unavailable';
     elements.liveAsOf.textContent = "Historical replay remains available";
+    elements.browserVerification.className = "browser-verification is-failed";
+    elements.browserVerification.setAttribute("aria-busy", "false");
+    elements.browserVerificationStatus.innerHTML =
+      '<i data-lucide="shield-alert" aria-hidden="true"></i>Verification failed';
+    elements.verificationModel.textContent = "Exposure withheld";
+    elements.verificationSource.textContent = "Parity unavailable";
+    elements.verificationHash.textContent = "Not verified";
+    elements.verificationDate.textContent = "Not verified";
+    elements.verificationVoteLow.textContent = "--";
+    elements.verificationVoteMiddle.textContent = "--";
+    elements.verificationVoteHigh.textContent = "--";
+    elements.verificationVoteTotal.textContent = "-- / 10";
+    elements.browserVerificationDetail.textContent =
+      `Fail closed: ${reason}. No current model exposure is displayed.`;
+    elements.liveStance.textContent = "--";
+    elements.liveStance.className = "stance-badge is-defensive";
+    elements.liveLearnedTarget.textContent = "--";
+    elements.livePosture.textContent = "Exposure withheld; browser checks did not pass";
+    elements.liveVt10.textContent = "--";
+    elements.liveTilt.textContent = "--";
+    elements.liveSeedRange.textContent = "--";
+    elements.liveComposite.textContent = "--";
+    elements.liveGaugeFill.style.width = "0%";
+    elements.liveGaugeRange.style.left = "0%";
+    elements.liveGaugeRange.style.width = "0%";
+    elements.liveGauge.setAttribute(
+      "aria-label",
+      "Current exposure withheld because browser policy verification failed",
+    );
     elements.liveExplanation.textContent =
-      "The latest generated signal could not be loaded.";
+      "The latest model decision is unavailable because its integrity and parity checks did not all pass.";
+    elements.livePrice.textContent = "--";
+    elements.liveDailyChange.textContent = "--";
+    elements.liveDailyChange.className = "";
+    elements.liveVolatility.textContent = "--";
+    elements.liveMomentum.textContent = "--";
+    elements.liveMomentum.className = "";
+    elements.liveDrawdown.textContent = "--";
+    elements.liveDrawdown.className = "";
+    elements.liveVix.textContent = "VIX --";
+    elements.liveSource.textContent = "Current feed withheld";
+    elements.liveGenerated.textContent = "Verification did not complete";
     elements.liveChartMessage.textContent = "Latest signal path unavailable";
     elements.liveChartMessage.style.color = COLORS.warning;
+    elements.liveChartMessage.classList.remove("is-hidden");
+    Object.assign(diagnostics, {
+      status: "failed",
+      failClosed: true,
+      exposureVisible: false,
+      asOf: null,
+      error: reason,
+      model: null,
+      signal: null,
+      voteCounts: null,
+      actions: null,
+      verification: { status: "failed" },
+      parity: null,
+    });
     initializeIcons();
+  }
+
+  function safeErrorMessage(error) {
+    const raw = error instanceof Error ? error.message : String(error || "Unknown error");
+    return raw
+      .replace(/https?:\/\/\S+/gi, "a required asset")
+      .replace(/file:\/\/\S+/gi, "a required asset")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 220) || "Unknown verification error";
   }
 
   function startLiveChartAnimation() {

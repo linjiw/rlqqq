@@ -1,0 +1,172 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from rlqqq.live import (
+    RESIDUAL_MULTIPLIERS,
+    FrozenActorEnsemble,
+    actor_state_sha256,
+    browser_feature_schema,
+    canonical_json_bytes,
+    payload_sha256,
+)
+
+ROOT = Path(__file__).resolve().parent.parent
+ASSETS = ROOT / "docs" / "assets"
+MODELS = ASSETS / "models"
+
+
+def read_json(path: Path) -> dict:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def file_sha256(path: Path) -> str:
+    return hashlib.sha256(path.read_bytes()).hexdigest()
+
+
+def test_static_browser_bundle_is_hash_bound_to_the_frozen_actor():
+    manifest_path = MODELS / "model-manifest.json"
+    manifest = read_json(manifest_path)
+    source_path = ROOT / manifest["sourceArtifact"]["path"]
+    ensemble = FrozenActorEnsemble.load(source_path)
+
+    assert manifest_path.read_bytes() == canonical_json_bytes(manifest)
+    assert manifest["modelVersion"] == ensemble.model_version
+    assert manifest["sourceArtifact"]["sha256"] == ensemble.artifact_sha256
+    assert file_sha256(source_path) == ensemble.artifact_sha256
+
+    onnx_path = MODELS / manifest["onnx"]["path"]
+    assert onnx_path.stat().st_size == manifest["onnx"]["bytes"]
+    assert file_sha256(onnx_path) == manifest["onnx"]["sha256"]
+    assert manifest["onnx"]["sha256"].startswith(
+        manifest["onnx"]["path"].split(".")[-2]
+    )
+
+    golden_path = MODELS / manifest["replay"]["goldenVectorsPath"]
+    golden = read_json(golden_path)
+    assert golden_path.read_bytes() == canonical_json_bytes(golden)
+    assert file_sha256(golden_path) == manifest["replay"]["goldenVectorsSha256"]
+    assert golden["modelVersion"] == ensemble.model_version
+    assert golden["sourceArtifactSha256"] == ensemble.artifact_sha256
+    assert golden["onnxArtifactSha256"] == manifest["onnx"]["sha256"]
+
+    schema = browser_feature_schema(ensemble)
+    assert manifest["features"]["schemaSha256"] == payload_sha256(schema)
+    for key, value in schema.items():
+        assert manifest["features"][key] == value
+    assert manifest["features"]["normalizerMean"] == ensemble.normalizer_mean.tolist()
+    assert manifest["features"]["normalizerStd"] == ensemble.normalizer_std.tolist()
+
+    runtime = manifest["runtime"]
+    runtime_dir = ASSETS / "ort" / runtime["version"]
+    assert runtime["executionProviders"] == ["wasm"]
+    assert runtime["wasmThreads"] == 1
+    assert manifest["validation"]["failClosed"] is True
+    for filename in (
+        "ort.wasm.min.mjs",
+        "ort-wasm-simd-threaded.mjs",
+        "ort-wasm-simd-threaded.wasm",
+    ):
+        assert (runtime_dir / filename).is_file()
+
+
+def test_published_replay_is_hash_bound_and_recursively_reproducible():
+    manifest = read_json(MODELS / "model-manifest.json")
+    input_path = ASSETS / "data" / "policy-input-history.json"
+    reference_path = ASSETS / "data" / "python-reference.json"
+    signal = read_json(ASSETS / "live-signal.json")
+    replay_input = read_json(input_path)
+    reference = read_json(reference_path)
+    ensemble = FrozenActorEnsemble.load(
+        ROOT / manifest["sourceArtifact"]["path"]
+    )
+
+    assert input_path.read_bytes() == canonical_json_bytes(replay_input)
+    assert reference_path.read_bytes() == canonical_json_bytes(reference)
+    assert reference["inputPayloadSha256"] == file_sha256(input_path)
+    assert reference["inputPayloadSha256"] == payload_sha256(replay_input)
+
+    shared = (
+        "schemaVersion",
+        "modelVersion",
+        "sourceArtifactSha256",
+        "featureSchemaSha256",
+        "activationDate",
+        "asOf",
+        "rowCount",
+    )
+    for key in shared:
+        assert reference[key] == replay_input[key]
+    assert replay_input["modelVersion"] == manifest["modelVersion"]
+    assert replay_input["sourceArtifactSha256"] == ensemble.artifact_sha256
+    assert replay_input["featureSchemaSha256"] == manifest["features"][
+        "schemaSha256"
+    ]
+    assert replay_input["featureNames"] == list(ensemble.feature_names)
+    assert replay_input["dates"] == reference["dates"]
+
+    row_count = replay_input["rowCount"]
+    actor_count = ensemble.ensemble_size
+    raw = np.asarray(replay_input["rawFeatures"], dtype=np.float64)
+    baselines = np.asarray(replay_input["vt10Exposure"], dtype=np.float64)
+    expected_normalized = np.asarray(
+        reference["normalizedFeatures"], dtype=np.float64
+    )
+    expected_logits = np.asarray(reference["logits"], dtype=np.float64)
+    expected_actions = np.asarray(reference["actions"], dtype=np.int64)
+    expected_exposure = np.asarray(reference["actorExposure"], dtype=np.float64)
+
+    assert raw.shape == (row_count, len(ensemble.feature_names))
+    assert baselines.shape == (row_count,)
+    assert expected_logits.shape == (row_count, actor_count, 3)
+    np.testing.assert_allclose(
+        ensemble.normalize(raw), expected_normalized, rtol=0, atol=0
+    )
+
+    previous = np.zeros(actor_count, dtype=np.float64)
+    for index in range(row_count):
+        observations = np.column_stack(
+            [
+                np.repeat(expected_normalized[index][None, :], actor_count, axis=0),
+                previous,
+                np.full(actor_count, baselines[index]),
+            ]
+        )
+        logits = ensemble.logits(observations)
+        actions = np.argmax(logits, axis=1)
+        exposure = np.clip(
+            baselines[index] * RESIDUAL_MULTIPLIERS[actions], 0.0, 1.0
+        )
+        np.testing.assert_allclose(logits, expected_logits[index], rtol=0, atol=0)
+        np.testing.assert_array_equal(actions, expected_actions[index])
+        np.testing.assert_allclose(
+            exposure, expected_exposure[index], rtol=0, atol=0
+        )
+        previous = exposure
+
+    latest = reference["latest"]
+    assert latest["actions"] == expected_actions[-1].tolist()
+    assert latest["actorExposure"] == expected_exposure[-1].tolist()
+    assert latest["actorStateSha256"] == actor_state_sha256(expected_exposure[-1])
+    assert latest["voteCounts"] == np.bincount(
+        expected_actions[-1], minlength=len(RESIDUAL_MULTIPLIERS)
+    ).tolist()
+    assert latest["learnedMean"] == pytest.approx(float(previous.mean()))
+    assert signal["asOf"] == reference["asOf"]
+    assert signal["model"]["artifactSha256"] == ensemble.artifact_sha256
+    assert signal["signal"]["actorStateSha256"] == latest["actorStateSha256"]
+    for key in (
+        "vt10Exposure",
+        "learnedMean",
+        "learnedMin",
+        "learnedMax",
+        "tiltMultiplier",
+        "vt20Exposure",
+        "compositeExposure",
+    ):
+        assert signal["signal"][key] == pytest.approx(latest[key], abs=5e-6)

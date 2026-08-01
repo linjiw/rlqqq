@@ -6,6 +6,7 @@ from pathlib import Path
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from rlqqq.live import (
     FEATURE_NAMES,
@@ -19,6 +20,7 @@ from rlqqq.live import (
     load_checked_market_frames,
     replay_frozen_policy,
     validate_forward_log,
+    validate_latest_market_frames,
     write_signal_json,
 )
 
@@ -38,6 +40,18 @@ def checked_replay():
     )
 
 
+def test_latest_market_feeds_must_share_the_qqq_session():
+    frames = load_checked_market_frames(ROOT / "data" / "raw")
+    assert validate_latest_market_frames(frames) == pd.Timestamp("2026-07-31")
+
+    lagging = {**frames, "^VIX": frames["^VIX"].iloc[:-1].copy()}
+    with pytest.raises(
+        ValueError,
+        match="Market feeds do not share QQQ session 2026-07-31",
+    ):
+        validate_latest_market_frames(lagging)
+
+
 def test_online_features_exactly_match_training_snapshot():
     frames = load_checked_market_frames(ROOT / "data" / "raw")
     actual = build_feature_frame(
@@ -51,13 +65,26 @@ def test_online_features_exactly_match_training_snapshot():
         ]
     )
     dates = actual.index.intersection(expected.dropna().index)
-    np.testing.assert_array_equal(
+    # Rolling-window implementations can differ by a few floating-point ULPs
+    # across the pinned pandas/NumPy runtime and the version that wrote the
+    # Parquet snapshot.  Keep the tolerance far below policy-relevant scale.
+    np.testing.assert_allclose(
         actual.loc[dates, FEATURE_NAMES].to_numpy(),
         expected.loc[dates, FEATURE_NAMES].to_numpy(),
+        rtol=0,
+        atol=1e-12,
     )
 
 
 def test_v4_numpy_actors_match_saved_sb3_holdout_exposures():
+    series_dir = ROOT / "results" / "series"
+    expected_paths = [
+        series_dir / f"holdout_v4_resid_QQQ_H2026_s{seed}.npz"
+        for seed in range(10)
+    ]
+    if not all(path.is_file() for path in expected_paths):
+        pytest.skip("optional gitignored v4 research holdout series are unavailable")
+
     bundle = FrozenActorEnsemble.load(LEGACY_MODEL)
     frames = load_checked_market_frames(ROOT / "data" / "raw")
     features = build_feature_frame(
@@ -65,13 +92,8 @@ def test_v4_numpy_actors_match_saved_sb3_holdout_exposures():
     )
     replay = replay_frozen_policy(bundle, features, frames["QQQ"])
     actual = replay.attrs["actor_exposure"]
-    for seed in range(10):
-        with np.load(
-            ROOT
-            / "results"
-            / "series"
-            / f"holdout_v4_resid_QQQ_H2026_s{seed}.npz"
-        ) as expected:
+    for seed, expected_path in enumerate(expected_paths):
+        with np.load(expected_path) as expected:
             dates = pd.to_datetime(expected["test_dates"])
             positions = replay.index.get_indexer(dates)
             assert np.all(positions >= 0)

@@ -87,11 +87,68 @@
             <div class="live-freshness">
               <span class="live-status is-loading" id="live-status">
                 <i data-lucide="loader-circle" aria-hidden="true"></i>
-                Loading signal
+                Verifying ONNX
               </span>
               <time id="live-as-of">Awaiting market data</time>
             </div>
           </div>
+
+          <section
+            class="browser-verification is-loading"
+            id="browser-verification"
+            aria-labelledby="browser-verification-title"
+            aria-busy="true"
+          >
+            <div class="browser-verification-heading">
+              <div>
+                <span class="section-kicker">Local inference audit</span>
+                <h3 id="browser-verification-title">Browser policy verification</h3>
+              </div>
+              <strong
+                class="browser-verification-status"
+                id="browser-verification-status"
+                role="status"
+                aria-live="polite"
+              >
+                <i data-lucide="loader-circle" aria-hidden="true"></i>
+                Verifying ONNX
+              </strong>
+            </div>
+
+            <dl class="browser-parity" aria-label="Model parity checks">
+              <div>
+                <dt>Model parity</dt>
+                <dd id="verification-model">Checking version</dd>
+              </div>
+              <div>
+                <dt>Source parity</dt>
+                <dd id="verification-source">Checking Python replay</dd>
+              </div>
+              <div>
+                <dt>Hash parity</dt>
+                <dd id="verification-hash">Checking artifacts</dd>
+              </div>
+              <div>
+                <dt>Date parity</dt>
+                <dd id="verification-date">Checking latest session</dd>
+              </div>
+            </dl>
+
+            <div class="browser-votes" aria-label="Ten-seed action vote counts">
+              <span>10-seed action votes</span>
+              <div>
+                <span>0.5x <strong id="verification-vote-low">--</strong></span>
+                <span>1.0x <strong id="verification-vote-middle">--</strong></span>
+                <span>1.5x <strong id="verification-vote-high">--</strong></span>
+                <span class="browser-vote-total" id="verification-vote-total">-- / 10</span>
+              </div>
+            </div>
+
+            <p class="browser-verification-detail" id="browser-verification-detail">
+              Loading the frozen model and replaying its Python reference in this browser.
+              Current exposure remains withheld until every check passes.
+            </p>
+          </section>
 
           <div class="live-grid" id="live-grid" aria-busy="true">
             <article class="live-signal-panel">
@@ -101,10 +158,11 @@
               </div>
               <div class="live-target">
                 <strong id="live-learned-target">--</strong>
-                <span id="live-posture">v8 no-calendar ensemble</span>
+                <span id="live-posture">Exposure withheld pending verification</span>
               </div>
               <div
                 class="live-gauge"
+                id="live-gauge"
                 role="img"
                 aria-label="Current learned exposure on a zero to one point five times scale"
               >
@@ -136,7 +194,7 @@
                 </div>
               </dl>
               <p class="live-explanation" id="live-explanation">
-                Loading the latest reference-policy decision.
+                Browser verification must pass before the current exposure is shown.
               </p>
             </article>
 
@@ -204,8 +262,10 @@
               <strong>v8 no-calendar reference.</strong>
               2010-2025 walk-forward: 12.90% CAGR, 1.052 Sharpe, -11.49%
               maximum drawdown, and 1.123 Calmar. Frozen through 2023 and
-              generated after the latest delayed close. Research exposure
-              target, not personalized advice or an execution order.
+              generated after the latest delayed close. The current target is
+              shown only after this browser's ONNX replay matches the Python
+              reference. Research exposure target, not personalized advice or
+              an execution order.
             </p>
             <a
               href="https://github.com/linjiw/rlqqq/blob/master/results/forward_log.csv"

@@ -168,8 +168,8 @@ class FrozenActorEnsemble:
         values = (raw_features - self.normalizer_mean) / self.normalizer_std
         return np.clip(values, -10.0, 10.0)
 
-    def actions(self, observations: np.ndarray) -> np.ndarray:
-        """Return deterministic categorical actions for one row per actor."""
+    def logits(self, observations: np.ndarray) -> np.ndarray:
+        """Return categorical actor logits for one observation per actor."""
         obs = np.asarray(observations, dtype=np.float64)
         expected = (self.ensemble_size, len(self.feature_names) + 2)
         if obs.shape != expected:
@@ -182,11 +182,14 @@ class FrozenActorEnsemble:
             np.einsum("si,soi->so", hidden1, self.layer2_weight)
             + self.layer2_bias
         )
-        logits = (
+        return (
             np.einsum("si,soi->so", hidden2, self.action_weight)
             + self.action_bias
         )
-        return np.argmax(logits, axis=1)
+
+    def actions(self, observations: np.ndarray) -> np.ndarray:
+        """Return deterministic categorical actions for one row per actor."""
+        return np.argmax(self.logits(observations), axis=1)
 
 
 def make_market_features(prices: pd.DataFrame) -> pd.DataFrame:
@@ -332,6 +335,44 @@ def fetch_yahoo_market_frames(
     return frames
 
 
+def validate_latest_market_frames(
+    frames: Mapping[str, pd.DataFrame],
+) -> pd.Timestamp:
+    """Require every live input feed to cover the same completed session.
+
+    Context features are forward-filled to reproduce training, but a current
+    decision must never be produced by silently carrying an old VIX or yield
+    observation into a newer QQQ close.
+    """
+    required = ("QQQ", "^VIX", "^TNX", "^IRX")
+    missing = [symbol for symbol in required if symbol not in frames]
+    if missing:
+        raise ValueError(f"Market inputs are missing feeds: {missing}")
+
+    latest: dict[str, pd.Timestamp] = {}
+    for symbol in required:
+        frame = frames[symbol]
+        if frame.empty:
+            raise ValueError(f"{symbol} market input is empty")
+        date = pd.Timestamp(frame.index[-1]).tz_localize(None).normalize()
+        close = float(frame["Close"].iloc[-1])
+        if not np.isfinite(close):
+            raise ValueError(f"{symbol} latest close is not finite")
+        latest[symbol] = date
+
+    qqq_date = latest["QQQ"]
+    lagging = {
+        symbol: str(date.date())
+        for symbol, date in latest.items()
+        if date != qqq_date
+    }
+    if lagging:
+        raise ValueError(
+            f"Market feeds do not share QQQ session {qqq_date.date()}: {lagging}"
+        )
+    return qqq_date
+
+
 def replay_frozen_policy(
     ensemble: FrozenActorEnsemble,
     features: pd.DataFrame,
@@ -429,6 +470,158 @@ def actor_state_sha256(exposure: np.ndarray) -> str:
         np.asarray(exposure, dtype=np.float64), 5
     ).astype("<f8", copy=False)
     return hashlib.sha256(canonical.tobytes()).hexdigest()
+
+
+def canonical_json_bytes(payload: Mapping) -> bytes:
+    """Serialize a public browser contract deterministically for hashing."""
+    return (
+        json.dumps(
+            payload,
+            separators=(",", ":"),
+            sort_keys=True,
+            ensure_ascii=True,
+            allow_nan=False,
+        )
+        + "\n"
+    ).encode("utf-8")
+
+
+def payload_sha256(payload: Mapping) -> str:
+    return hashlib.sha256(canonical_json_bytes(payload)).hexdigest()
+
+
+def write_compact_json(payload: Mapping, output: str | Path) -> str:
+    """Write one deterministic public JSON contract and return its digest."""
+    path = Path(output)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    encoded = canonical_json_bytes(payload)
+    path.write_bytes(encoded)
+    return hashlib.sha256(encoded).hexdigest()
+
+
+def browser_feature_schema(ensemble: FrozenActorEnsemble) -> dict:
+    return {
+        "featureNames": list(ensemble.feature_names),
+        "normalizerClip": [-10.0, 10.0],
+        "observationOrder": [
+            "normalizedFeatures[22]",
+            "previousExposureForActor",
+            "vt10Exposure",
+        ],
+    }
+
+
+def build_browser_replay_payloads(
+    replay: pd.DataFrame,
+    ensemble: FrozenActorEnsemble,
+    features: pd.DataFrame,
+) -> tuple[dict, dict]:
+    """Build browser inputs plus an independent NumPy replay reference.
+
+    The browser receives raw features and the causal VT10 anchor, then must
+    preserve one previous-exposure state per actor while replaying from the
+    frozen activation date.  The reference payload is intentionally separate
+    so a browser cannot silently display the server-computed answer as if it
+    had run the actor itself.
+    """
+    if replay.empty:
+        raise ValueError("Cannot build browser assets from an empty replay")
+    actor_exposure = replay.attrs.get("actor_exposure")
+    expected_actions = replay.attrs.get("actions")
+    if actor_exposure is None or expected_actions is None:
+        raise ValueError("Replay is missing per-actor state or actions")
+
+    dates = pd.DatetimeIndex(replay.index)
+    raw = features.reindex(dates)[list(ensemble.feature_names)].to_numpy(
+        dtype=np.float64
+    )
+    if raw.shape != (len(replay), len(ensemble.feature_names)):
+        raise ValueError("Browser feature matrix has an unexpected shape")
+    if not np.isfinite(raw).all():
+        raise ValueError("Browser feature matrix contains non-finite values")
+
+    normalized = ensemble.normalize(raw)
+    previous = np.vstack(
+        [np.zeros((1, ensemble.ensemble_size)), actor_exposure[:-1]]
+    )
+    baselines = replay["vt10_exposure"].to_numpy(dtype=np.float64)
+    logits_rows = np.empty(
+        (len(replay), ensemble.ensemble_size, len(RESIDUAL_MULTIPLIERS)),
+        dtype=np.float64,
+    )
+    margins = np.empty((len(replay), ensemble.ensemble_size), dtype=np.float64)
+
+    for index, (feature_row, baseline) in enumerate(
+        zip(normalized, baselines, strict=True)
+    ):
+        observations = np.column_stack(
+            [
+                np.repeat(feature_row[None, :], ensemble.ensemble_size, axis=0),
+                previous[index],
+                np.full(ensemble.ensemble_size, baseline),
+            ]
+        )
+        logits = ensemble.logits(observations)
+        actions = np.argmax(logits, axis=1)
+        if not np.array_equal(actions, expected_actions[index]):
+            raise AssertionError(f"Browser reference action mismatch at {dates[index]}")
+        logits_rows[index] = logits
+        ordered = np.sort(logits, axis=1)
+        margins[index] = ordered[:, -1] - ordered[:, -2]
+
+    feature_schema = browser_feature_schema(ensemble)
+    feature_schema_sha = payload_sha256(feature_schema)
+    date_strings = [str(date.date()) for date in dates]
+    input_payload = {
+        "schemaVersion": 1,
+        "modelVersion": ensemble.model_version,
+        "sourceArtifactSha256": ensemble.artifact_sha256,
+        "featureSchemaSha256": feature_schema_sha,
+        "activationDate": str(dates[0].date()),
+        "asOf": str(dates[-1].date()),
+        "rowCount": len(dates),
+        "dates": date_strings,
+        "featureNames": list(ensemble.feature_names),
+        "rawFeatures": raw.tolist(),
+        "vt10Exposure": baselines.tolist(),
+    }
+    input_digest = payload_sha256(input_payload)
+
+    latest = replay.iloc[-1]
+    latest_actions = expected_actions[-1].astype(int)
+    vote_counts = np.bincount(
+        latest_actions, minlength=len(RESIDUAL_MULTIPLIERS)
+    )
+    reference_payload = {
+        "schemaVersion": 1,
+        "modelVersion": ensemble.model_version,
+        "sourceArtifactSha256": ensemble.artifact_sha256,
+        "featureSchemaSha256": feature_schema_sha,
+        "inputPayloadSha256": input_digest,
+        "activationDate": str(dates[0].date()),
+        "asOf": str(dates[-1].date()),
+        "rowCount": len(dates),
+        "dates": date_strings,
+        "normalizedFeatures": normalized.tolist(),
+        "actions": expected_actions.astype(int).tolist(),
+        "logits": logits_rows.tolist(),
+        "topTwoMargins": margins.tolist(),
+        "actorExposure": np.asarray(actor_exposure, dtype=np.float64).tolist(),
+        "latest": {
+            "actions": latest_actions.tolist(),
+            "voteCounts": vote_counts.astype(int).tolist(),
+            "actorExposure": np.asarray(actor_exposure[-1], dtype=np.float64).tolist(),
+            "actorStateSha256": actor_state_sha256(actor_exposure[-1]),
+            "vt10Exposure": float(latest["vt10_exposure"]),
+            "learnedMean": float(latest["learned_mean"]),
+            "learnedMin": float(latest["learned_min"]),
+            "learnedMax": float(latest["learned_max"]),
+            "tiltMultiplier": float(latest["tilt_multiplier"]),
+            "vt20Exposure": float(latest["vt20_exposure"]),
+            "compositeExposure": float(latest["composite_exposure"]),
+        },
+    }
+    return input_payload, reference_payload
 
 
 def build_signal_payload(
