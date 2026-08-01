@@ -47,6 +47,25 @@ DSR = 0.013 (N=484). Seed IQM Sharpe 0.97 [0.86, 1.08].
 5. Stack validity is established (planted-signal + placebo tests pass), so
    these nulls are informative about markets, not about broken code.
 
+## Ensemble & combination mining (2026-08-01, from saved series)
+
+- **Mean-exposure seed ensemble** (k=10-15) is a free win: QQQ Sharpe
+  1.03→1.09, MaxDD −20%→−16%, turnover −25%. Ensemble curve saturates
+  ~k=10-15. Averaging > selection (val-selection is uninformative anyway).
+- Agent exposure is nearly orthogonal to vol-targeting (corr 0.15) → they
+  combine: **0.5·agent + 0.5·vol-target on QQQ: Sharpe 1.143, CAGR 13.2%,
+  MaxDD −13.8%, turnover 17.7** — better Sharpe than vol-target (1.103),
+  better CAGR, vs B&H ΔSharpe +0.14 [−0.05, +0.33]. Still not significant,
+  and combination rules were explored on test data (multiple-testing caveat
+  logged; needs 2026-holdout confirmation).
+- SPY: agent adds nothing over vol-target (blend 1.00 vs vt 1.04). The QQQ
+  edge does not transfer to SPY — consistent with QQQ's higher vol making
+  timing more valuable.
+- Cost sensitivity: agent break-even vs B&H ≈ 4-5 bps; at retail 0.5 bps
+  agent ≈ vol-target Sharpe.
+- Regime: agent beats B&H Sharpe in 5/8 folds — all four high-vol folds;
+  loses only in the calm 2012–2017 bulls. Every fold: agent MaxDD < B&H.
+
 ## Honest bottom line (as of v3)
 
 Everything found so far is consistent with the literature synthesis: RL
