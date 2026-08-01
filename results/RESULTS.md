@@ -93,6 +93,16 @@ training-only switch penalty, mean-exposure seed ensembles. QQQ, 8 folds ×
 - Anchoring converted the seed lottery into "baseline ± small learned
   deviation" — worst case is now the baseline, as designed.
 
+### v4 robustness checks
+
+- **5 bps costs (QQQ):** v4_resid Sharpe 1.080 vs vol-target 1.088 — the
+  edge over VT vanishes at 2.5x costs but the agent stays at the frontier;
+  v2_boot degrades much faster (0.99). Low turnover = cost robustness.
+- **SPY transfer:** v4_resid ens Sharpe 1.012 vs VT 1.036 (ΔSh −0.02
+  [−0.10,+0.06]) — on SPY the residual agent matches but does not exceed
+  the baseline (unlike QQQ). Pattern repeats: learned timing adds value on
+  the higher-vol asset only.
+
 ## Honest bottom line (as of v3)
 
 Everything found so far is consistent with the literature synthesis: RL
