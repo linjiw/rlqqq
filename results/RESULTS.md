@@ -103,6 +103,41 @@ training-only switch penalty, mean-exposure seed ensembles. QQQ, 8 folds ×
   the baseline (unlike QQQ). Pattern repeats: learned timing adds value on
   the higher-vol asset only.
 
+## v5 scaling sweep + era holdout + audit (2026-08-01)
+
+**Cash-rate bug fixed** (^IRX was /10 → T-bill understated 10x; all evals
+re-run, conclusions unchanged, numbers shifted slightly).
+
+**Scaling sweep (QQQ, each 8 folds × 10 seeds on the v4 recipe):**
+
+| variant | Sharpe | CAGR | MaxDD | verdict |
+|---|---|---|---|---|
+| ppo_v4_resid (150k, 64×64, 3 paths) | 1.047 | 13.2% | −12.2% | reference |
+| + LAWA checkpoint averaging (k=8) | 1.032 | 12.6% | −11.7% | no gain |
+| + 7 bootstrap paths | 1.031 | 12.8% | −11.6% | no gain |
+| + 500k steps (3.3× compute) | 1.044 | 13.0% | −12.6% | no gain |
+
+**Scaling is saturated.** The recipe converged at 150k steps / 64×64 / 3
+paths; the constraint is signal, not capacity or compute — consistent with
+the frontier verdict from the literature research.
+
+**Era-holdout validation (the big result — see `era_holdout_report.md`):**
+frozen recipe on NDX with 2000–2009 test folds (dot-com + GFC, never used
+in any design decision): agent +3.9% CAGR / −27% MaxDD vs B&H −5.4% / −82%.
+**ΔSharpe vs B&H +0.37 [+0.09, +0.67] — the study's first statistically
+significant beat of buy-and-hold.** Rank over vol-target preserved (+0.03).
+
+**DCA scorecard (2010–2025, matched windows):** agent beats DCA on CAGR
+(QQQ +0.8pp, SPY +1.1pp) and drawdown, ties on Sharpe — consistent
+directional edge, not yet significant. In 2000–2009 DCA is the strongest
+passive benchmark (Sharpe 0.20 vs agent 0.16) though with −51% vs −27% DD.
+
+**What the agent learned (deep-dive, `deep_dive_report.md`):** an
+interpretable contrarian tilt — add exposure above vol-target in high-vol
+drawdown states (+5%/yr in those states), pay a small FOMO tax in calm
+bulls. Deviation from baseline >0.1 on 27% of days; +0.8%/yr total value
+over pure vol-targeting; survives out-of-era.
+
 ## Honest bottom line (as of v3)
 
 Everything found so far is consistent with the literature synthesis: RL
