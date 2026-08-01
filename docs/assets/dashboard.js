@@ -27,6 +27,7 @@
 
   const state = {
     data: null,
+    liveData: null,
     dates: [],
     timestamps: [],
     index: 0,
@@ -41,6 +42,9 @@
     exporting: false,
     wealthDomain: [0.8, 32],
     drawdownFloor: -0.4,
+    liveAnimationFrame: null,
+    liveAnimationStart: 0,
+    liveAnimationProgress: 0,
   };
 
   const elements = {};
@@ -60,12 +64,29 @@
     currency: "USD",
     maximumFractionDigits: 0,
   });
+  const livePriceFormatter = new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency: "USD",
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const generatedFormatter = new Intl.DateTimeFormat("en-US", {
+    month: "short",
+    day: "numeric",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+    timeZone: "UTC",
+    timeZoneName: "short",
+  });
 
   document.addEventListener("DOMContentLoaded", init);
 
   async function init() {
     cacheElements();
     initializeIcons();
+    loadLiveSignal();
 
     try {
       const response = await fetch("assets/policy-data.json");
@@ -92,6 +113,29 @@
     const ids = [
       "sample-range",
       "sample-days",
+      "live-status",
+      "live-as-of",
+      "live-grid",
+      "live-stance",
+      "live-learned-target",
+      "live-posture",
+      "live-gauge-fill",
+      "live-gauge-range",
+      "live-vt10",
+      "live-tilt",
+      "live-seed-range",
+      "live-composite",
+      "live-explanation",
+      "live-price",
+      "live-daily-change",
+      "live-volatility",
+      "live-momentum",
+      "live-drawdown",
+      "live-vix",
+      "live-source",
+      "live-generated",
+      "live-chart",
+      "live-chart-message",
       "policy-status",
       "policy-name",
       "policy-description",
@@ -162,6 +206,241 @@
     if (window.lucide) {
       window.lucide.createIcons();
     }
+  }
+
+  async function loadLiveSignal() {
+    try {
+      const response = await fetch("assets/live-signal.json", { cache: "no-cache" });
+      if (!response.ok) {
+        throw new Error(`Live signal request failed with status ${response.status}`);
+      }
+      const payload = await response.json();
+      validateLiveSignal(payload);
+      state.liveData = payload;
+      renderLiveSignal();
+      startLiveChartAnimation();
+    } catch (error) {
+      showLiveError(error);
+    }
+  }
+
+  function validateLiveSignal(payload) {
+    const history = payload?.history;
+    const signal = payload?.signal;
+    if (
+      payload?.schemaVersion !== 1 ||
+      !payload.asOf ||
+      !payload.market ||
+      !signal ||
+      !history ||
+      !Array.isArray(history.dates) ||
+      history.dates.length < 2 ||
+      history.learnedMean.length !== history.dates.length ||
+      history.vt10Exposure.length !== history.dates.length
+    ) {
+      throw new Error("Live signal schema is incomplete");
+    }
+  }
+
+  function renderLiveSignal() {
+    const payload = state.liveData;
+    const { market, signal, source } = payload;
+    const sourceDate = new Date(`${payload.asOf}T00:00:00Z`);
+    const generatedDate = new Date(payload.generatedAt);
+    const generatedAgeHours = (Date.now() - generatedDate.getTime()) / 3_600_000;
+    const marketAgeDays = (Date.now() - sourceDate.getTime()) / 86_400_000;
+    const stale = payload.stale || generatedAgeHours > 120 || marketAgeDays > 6;
+
+    elements.liveGrid.setAttribute("aria-busy", "false");
+    elements.liveStatus.className = `live-status${stale ? " is-stale" : ""}`;
+    elements.liveStatus.innerHTML =
+      `<i data-lucide="${stale ? "clock-alert" : "circle-check"}" aria-hidden="true"></i>` +
+      (stale ? "Stale close" : "Latest close");
+    elements.liveAsOf.textContent = `As of ${dateFormatter.format(sourceDate)}`;
+
+    elements.liveLearnedTarget.textContent = `${signal.learnedMean.toFixed(2)}x`;
+    elements.livePosture.textContent = signal.researchPosture;
+    elements.liveVt10.textContent = `${signal.vt10Exposure.toFixed(2)}x`;
+    elements.liveTilt.textContent = `${signal.tiltMultiplier.toFixed(2)}x`;
+    elements.liveSeedRange.textContent =
+      `${signal.learnedMin.toFixed(2)}-${signal.learnedMax.toFixed(2)}x`;
+    elements.liveComposite.textContent = `${signal.compositeExposure.toFixed(2)}x`;
+    elements.liveExplanation.textContent = signal.explanation;
+
+    elements.liveGaugeFill.style.width =
+      `${clamp(signal.learnedMean / 1.5, 0, 1) * 100}%`;
+    elements.liveGaugeRange.style.left =
+      `${clamp(signal.learnedMin / 1.5, 0, 1) * 100}%`;
+    elements.liveGaugeRange.style.width =
+      `${clamp((signal.learnedMax - signal.learnedMin) / 1.5, 0, 1) * 100}%`;
+
+    elements.liveStance.textContent = signal.stance;
+    elements.liveStance.className = "stance-badge";
+    if (signal.stance === "Defensive") {
+      elements.liveStance.classList.add("is-defensive");
+    } else if (signal.stance === "Reduced risk") {
+      elements.liveStance.classList.add("is-reduced");
+    }
+
+    elements.livePrice.textContent = livePriceFormatter.format(market.price);
+    elements.liveDailyChange.textContent =
+      `${market.dailyChange >= 0 ? "+" : ""}${formatPercent(market.dailyChange, 2)}`;
+    elements.liveDailyChange.className = returnClass(market.dailyChange);
+    elements.liveVolatility.textContent = formatPercent(market.realizedVol21, 1);
+    elements.liveMomentum.textContent = formatPercent(market.momentum21, 1);
+    elements.liveMomentum.className = returnClass(market.momentum21);
+    elements.liveDrawdown.textContent = formatPercent(market.drawdown, 1);
+    elements.liveDrawdown.className = returnClass(market.drawdown);
+    elements.liveVix.textContent = `VIX ${market.vix.toFixed(2)}`;
+    elements.liveSource.textContent =
+      `${source.provider} / ${source.frequency.toLowerCase()}`;
+    elements.liveGenerated.textContent =
+      `Generated ${generatedFormatter.format(generatedDate)}`;
+    elements.liveChartMessage.classList.add("is-hidden");
+    initializeIcons();
+  }
+
+  function showLiveError(error) {
+    console.error(error);
+    elements.liveGrid.setAttribute("aria-busy", "false");
+    elements.liveStatus.className = "live-status is-error";
+    elements.liveStatus.innerHTML =
+      '<i data-lucide="triangle-alert" aria-hidden="true"></i>Signal unavailable';
+    elements.liveAsOf.textContent = "Historical replay remains available";
+    elements.liveExplanation.textContent =
+      "The latest generated signal could not be loaded.";
+    elements.liveChartMessage.textContent = "Latest signal path unavailable";
+    elements.liveChartMessage.style.color = COLORS.warning;
+    initializeIcons();
+  }
+
+  function startLiveChartAnimation() {
+    if (state.liveAnimationFrame) {
+      cancelAnimationFrame(state.liveAnimationFrame);
+    }
+    const reduced = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    state.liveAnimationProgress = reduced ? 1 : 0;
+    state.liveAnimationStart = performance.now();
+    if (reduced) {
+      drawLiveChart();
+      return;
+    }
+    state.liveAnimationFrame = requestAnimationFrame(animateLiveChart);
+  }
+
+  function animateLiveChart(now) {
+    const elapsed = now - state.liveAnimationStart;
+    state.liveAnimationProgress = clamp(elapsed / 850, 0, 1);
+    drawLiveChart();
+    if (state.liveAnimationProgress < 1) {
+      state.liveAnimationFrame = requestAnimationFrame(animateLiveChart);
+    } else {
+      state.liveAnimationFrame = null;
+    }
+  }
+
+  function drawLiveChart() {
+    if (!state.liveData) return;
+    const history = state.liveData.history;
+    const setup = setupCanvas(elements.liveChart);
+    const { context, width, height } = setup;
+    const plot = { x: 42, y: 12, width: width - 54, height: height - 38 };
+    const count = history.dates.length;
+    const throughIndex = Math.max(
+      1,
+      Math.min(count - 1, Math.floor((count - 1) * state.liveAnimationProgress)),
+    );
+    const xAt = (index) =>
+      plot.x + (index / Math.max(1, count - 1)) * plot.width;
+    const yAt = (value) => linearScale(value, [0, 1.5], plot);
+
+    clearCanvas(context, width, height);
+    drawHorizontalGrid(
+      context,
+      plot,
+      [0, 0.5, 1, 1.5],
+      yAt,
+      (value) => `${value.toFixed(1)}x`,
+    );
+
+    context.save();
+    context.fillStyle = "rgb(122 91 158 / 12%)";
+    context.beginPath();
+    for (let index = 0; index <= throughIndex; index += 1) {
+      const x = xAt(index);
+      const y = yAt(history.learnedMax[index]);
+      if (index === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    }
+    for (let index = throughIndex; index >= 0; index -= 1) {
+      context.lineTo(xAt(index), yAt(history.learnedMin[index]));
+    }
+    context.closePath();
+    context.fill();
+    context.restore();
+
+    drawLiveSeries(
+      context,
+      history.vt10Exposure,
+      throughIndex,
+      xAt,
+      yAt,
+      COLORS.rule,
+      1.4,
+    );
+    drawLiveSeries(
+      context,
+      history.learnedMean,
+      throughIndex,
+      xAt,
+      yAt,
+      COLORS.learned,
+      2.3,
+    );
+
+    const currentX = xAt(throughIndex);
+    drawDot(
+      context,
+      currentX,
+      yAt(history.learnedMean[throughIndex]),
+      COLORS.learned,
+      3.5,
+    );
+    drawLiveTimeAxis(context, plot, history.dates, xAt);
+  }
+
+  function drawLiveSeries(context, values, throughIndex, xAt, yAt, color, width) {
+    context.save();
+    context.strokeStyle = color;
+    context.lineWidth = width;
+    context.lineJoin = "round";
+    context.lineCap = "round";
+    context.beginPath();
+    for (let index = 0; index <= throughIndex; index += 1) {
+      const x = xAt(index);
+      const y = yAt(values[index]);
+      if (index === 0) context.moveTo(x, y);
+      else context.lineTo(x, y);
+    }
+    context.stroke();
+    context.restore();
+  }
+
+  function drawLiveTimeAxis(context, plot, dates, xAt) {
+    const indices = [0, Math.floor((dates.length - 1) / 2), dates.length - 1];
+    context.save();
+    context.fillStyle = COLORS.muted;
+    context.font = "9px Inter, ui-sans-serif, sans-serif";
+    context.textBaseline = "top";
+    indices.forEach((index, position) => {
+      context.textAlign = position === 0 ? "left" : position === 2 ? "right" : "center";
+      context.fillText(
+        compactDateFormatter.format(new Date(`${dates[index]}T00:00:00Z`)),
+        xAt(index),
+        plot.y + plot.height + 7,
+      );
+    });
+    context.restore();
   }
 
   function calculateDomains() {
@@ -401,10 +680,12 @@
   function setupResizeObservers() {
     const observer = new ResizeObserver(() => {
       window.requestAnimationFrame(() => {
+        drawLiveChart();
         drawWealthChart();
         drawExposureChart();
       });
     });
+    observer.observe(elements.liveChart.parentElement);
     observer.observe(elements.wealthChart.parentElement);
     observer.observe(elements.exposureChart.parentElement);
   }

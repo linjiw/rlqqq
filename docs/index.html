@@ -28,6 +28,7 @@
         </a>
 
         <nav class="top-nav" aria-label="Dashboard sections">
+          <a href="#live">Live</a>
           <a href="#replay">Replay</a>
           <a href="#evidence">Evidence</a>
           <a href="#years">Years</a>
@@ -71,6 +72,145 @@
             <span>Accounting</span>
             <strong>2 bps + financing</strong>
           </div>
+        </div>
+      </section>
+
+      <section class="live-band" id="live" aria-labelledby="live-title">
+        <div class="content-width">
+          <div class="live-heading">
+            <div>
+              <span class="section-kicker">Latest delayed close</span>
+              <h2 id="live-title">Current frozen-policy output</h2>
+              <p>QQQ exposure for the next close-to-close session</p>
+            </div>
+            <div class="live-freshness">
+              <span class="live-status is-loading" id="live-status">
+                <i data-lucide="loader-circle" aria-hidden="true"></i>
+                Loading signal
+              </span>
+              <time id="live-as-of">Awaiting market data</time>
+            </div>
+          </div>
+
+          <div class="live-grid" id="live-grid" aria-busy="true">
+            <article class="live-signal-panel">
+              <div class="live-panel-label">
+                <span>Best robust model</span>
+                <span class="stance-badge is-defensive" id="live-stance">--</span>
+              </div>
+              <div class="live-target">
+                <strong id="live-learned-target">--</strong>
+                <span id="live-posture">Frozen v4 ensemble</span>
+              </div>
+              <div
+                class="live-gauge"
+                role="img"
+                aria-label="Current learned exposure on a zero to one point five times scale"
+              >
+                <span id="live-gauge-fill"></span>
+                <i id="live-gauge-range"></i>
+                <b aria-hidden="true"></b>
+              </div>
+              <div class="gauge-labels" aria-hidden="true">
+                <span>Cash</span>
+                <span>1.0x</span>
+                <span>1.5x</span>
+              </div>
+              <dl class="live-decision-chain">
+                <div>
+                  <dt>VT10 anchor</dt>
+                  <dd id="live-vt10">--</dd>
+                </div>
+                <div>
+                  <dt>Learned residual</dt>
+                  <dd id="live-tilt">--</dd>
+                </div>
+                <div>
+                  <dt>Seed range</dt>
+                  <dd id="live-seed-range">--</dd>
+                </div>
+                <div>
+                  <dt>Composite candidate</dt>
+                  <dd id="live-composite">--</dd>
+                </div>
+              </dl>
+              <p class="live-explanation" id="live-explanation">
+                Loading the latest frozen-policy decision.
+              </p>
+            </article>
+
+            <article class="live-market-panel">
+              <div class="live-panel-label">
+                <span>Market state</span>
+                <strong>QQQ</strong>
+              </div>
+              <div class="live-market-grid">
+                <div>
+                  <span>Adjusted close</span>
+                  <strong id="live-price">--</strong>
+                  <small id="live-daily-change">--</small>
+                </div>
+                <div>
+                  <span>21d volatility</span>
+                  <strong id="live-volatility">--</strong>
+                  <small>Annualized</small>
+                </div>
+                <div>
+                  <span>21d momentum</span>
+                  <strong id="live-momentum">--</strong>
+                  <small>Close to close</small>
+                </div>
+                <div>
+                  <span>From peak</span>
+                  <strong id="live-drawdown">--</strong>
+                  <small id="live-vix">VIX --</small>
+                </div>
+              </div>
+              <div class="live-provenance">
+                <span id="live-source">Delayed research feed</span>
+                <span id="live-generated">Generation pending</span>
+              </div>
+            </article>
+
+            <article class="live-path-panel">
+              <div class="live-path-heading">
+                <div>
+                  <span class="section-kicker">Recent behavior</span>
+                  <h3>90-session signal path</h3>
+                </div>
+                <div class="chart-legend" aria-label="Live signal chart series">
+                  <span><i class="legend-swatch learned-swatch"></i>Frozen v4</span>
+                  <span><i class="legend-swatch rule-swatch"></i>VT10 anchor</span>
+                  <span><i class="range-swatch"></i>Seed range</span>
+                </div>
+              </div>
+              <div class="live-chart-wrap">
+                <canvas
+                  id="live-chart"
+                  role="img"
+                  aria-label="Recent frozen model exposure, volatility anchor, and ensemble seed range"
+                ></canvas>
+                <div class="live-chart-message" id="live-chart-message" role="status">
+                  Loading forward signal path
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <aside class="live-disclosure" aria-label="Live signal limitations">
+            <i data-lucide="flask-conical" aria-hidden="true"></i>
+            <p>
+              <strong>Forward research signal.</strong>
+              Frozen through 2023, generated after the latest delayed close.
+              It is an exposure target, not personalized investment advice or
+              an execution order.
+            </p>
+            <a
+              href="https://github.com/linjiw/rlqqq/blob/master/results/forward_log.csv"
+            >
+              Decision log <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+            </a>
+          </aside>
         </div>
       </section>
 
@@ -526,7 +666,7 @@
                 <li>The headline composite was constructed post-hoc from test-fold series.</li>
                 <li>Its Sharpe and CAGR confidence intervals both cross zero.</li>
                 <li>There are 162 omitted embargo days; this is a stitched OOS replay.</li>
-                <li>Saved artifacts contain exposures, not deployable PPO checkpoints.</li>
+                <li>The deployable bundle contains actor weights, not resumable PPO checkpoints.</li>
                 <li>The repository bootstrap helper mixes raw and excess Sharpe conventions.</li>
                 <li>DCA is excluded because its current accounting is not true periodic contribution accounting.</li>
               </ul>

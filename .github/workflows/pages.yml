@@ -7,16 +7,23 @@ on:
     paths:
       - "docs/**"
       - ".github/workflows/pages.yml"
+      - "models/live/**"
+      - "requirements-live.txt"
+      - "scripts/update_live_signal.py"
+      - "src/rlqqq/live.py"
+  schedule:
+    # US market close is 20:00/21:00 UTC; avoid the busy top of the hour.
+    - cron: "37 22 * * 1-5"
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
   pages: write
   id-token: write
 
 concurrency:
   group: pages
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 jobs:
   deploy:
@@ -27,6 +34,29 @@ jobs:
     steps:
       - name: Check out repository
         uses: actions/checkout@v4
+      - name: Set up Python
+        if: github.event_name != 'push'
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: requirements-live.txt
+      - name: Install live inference runtime
+        if: github.event_name != 'push'
+        run: python -m pip install --requirement requirements-live.txt
+      - name: Refresh delayed market signal
+        if: github.event_name != 'push'
+        run: python scripts/update_live_signal.py
+      - name: Commit forward decision record
+        if: github.event_name != 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add docs/assets/live-signal.json results/forward_log.csv
+          if ! git diff --cached --quiet; then
+            git commit -m "Update live policy signal"
+            git push
+          fi
       - name: Configure Pages
         uses: actions/configure-pages@v5
       - name: Upload dashboard

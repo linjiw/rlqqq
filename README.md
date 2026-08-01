@@ -9,14 +9,30 @@ after realistic costs, with statistically honest evaluation.
 
 The [RLQQQ policy replay](https://linjiw.github.io/rlqqq/) animates the
 2010-2025 walk-forward decisions, compares normalized wealth with QQQ and
-SPY, and exposes the volatility base and learned residual tilt at every date.
-It also exports the replay as WebM video or a PNG frame.
+SPY, exposes the volatility base and learned residual tilt at every date, and
+publishes the frozen v4 ensemble's latest delayed-close output. It also
+exports the replay as WebM video or a PNG frame.
 
 Rebuild its checked-in data bundle with:
 
 ```bash
 .venv/bin/python scripts/build_web_data.py
 ```
+
+The live signal is generated server-side and served as static JSON; no market
+API key or model runtime is exposed in the browser. Rebuild the frozen actor
+bundle and checked snapshot with:
+
+```bash
+.venv/bin/python scripts/export_live_policy.py --workers 7
+.venv/bin/python scripts/update_live_signal.py \
+  --provider checked \
+  --generated-at 2026-08-01T12:00:00Z
+```
+
+See [docs/live_deployment.md](docs/live_deployment.md) for feature-parity
+controls, scheduling behavior, provider tradeoffs, and the production upgrade
+path.
 
 ## Layout
 
@@ -46,11 +62,16 @@ scripts/
   prepare_dataset.py     # clean, audit, feature-build, splits, baselines
   run_pilot.py           # 8 folds x N seeds PPO experiment (parallel)
   analyze_pilot.py       # per-fold IQM vs baselines, bootstrap CIs, DSR
+  export_live_policy.py  # reproducible SB3 -> NumPy frozen actor release
+  update_live_signal.py  # delayed market refresh + static signal/log output
 tests/
   test_env.py            # incl. buy-and-hold reproduction invariant
+  test_live.py           # feature, actor, schema, and append-only log parity
 results/
   registry.jsonl         # trial registry (every scored run, for DSR)
   series/                # per-run test exposure/return series
+  forward_log.csv        # one immutable frozen-policy record per market date
+models/live/             # deployable actor weights + release manifest
 .venv/                   # python 3.12 venv (pandas, torch-cpu, sb3, arch)
 ```
 

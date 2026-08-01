@@ -1,5 +1,13 @@
 # Live Decision Snapshot — QQQ as of 2026-07-31
 
+> **Decision-date correction (2026-08-01):** the original table below paired
+> July 31 market features with the last saved evaluation action, which was
+> July 30 because scored datasets require a next-day return. Exact actor
+> export and online inference now compute the otherwise-unscored July 31
+> close directly: v4 ensemble **0.40** (seed range 0.21-0.63), multiplier
+> **0.95x**, and tilt-on-VT20 composite **0.80**. The original values remain
+> below as an audit record of the snapshot that motivated deployment.
+
 Market state: QQQ 687.99 (adj), trailing 21d realized vol **23.9%** (63d:
 25.5%), 1-month return **−5.1%**, 3-month +3.1%, **−7.7% below its peak**.
 A mild-correction / elevated-vol state.

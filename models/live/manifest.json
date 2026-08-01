@@ -1,0 +1,65 @@
+{
+  "modelVersion": "ppo_v4_resid_frozen_2023_v1",
+  "artifact": "ppo_v4_resid_frozen_2023_v1.npz",
+  "artifactSha256": "e85700abbfc2e766d100693b1f9b23af9ca5e8d8179193510a1c59cdc4cb2cad",
+  "exportedAt": "2026-08-01T20:55:41Z",
+  "trainCutoff": "2023-12-31",
+  "forwardReplayStart": "2026-01-01",
+  "ensembleSeeds": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9
+  ],
+  "architecture": "26 -> 64 tanh -> 64 tanh -> 3 categorical logits",
+  "residualMultipliers": [
+    0.5,
+    1.0,
+    1.5
+  ],
+  "featureNames": [
+    "ret_1d",
+    "ret_5d",
+    "ret_10d",
+    "ret_21d",
+    "ret_63d",
+    "ret_126d",
+    "ret_252d",
+    "vol_5d",
+    "vol_21d",
+    "vol_63d",
+    "ma_gap_21",
+    "ma_gap_50",
+    "ma_gap_200",
+    "rsi_14",
+    "macd_hist",
+    "drawdown",
+    "hl_range",
+    "overnight_gap",
+    "vol_ratio_21",
+    "dow",
+    "month",
+    "vix",
+    "term_spread_10y_3m",
+    "vix_chg_5d"
+  ],
+  "normalizer": "QQQ train window 1999-03-10 through 2023-12-31",
+  "training": {
+    "timesteps": 150000,
+    "bootstrapPaths": 3,
+    "episodeLength": 252,
+    "switchPenaltyBps": 5.0,
+    "entropyCoefficient": 0.005
+  },
+  "validation": {
+    "sb3VsSavedHoldoutMaxAbsError": 0.0,
+    "numpyVsSavedHoldoutMaxAbsError": 0.0,
+    "savedHoldoutEnd": "2026-07-30"
+  }
+}

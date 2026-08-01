@@ -225,6 +225,17 @@ lump-sum) acknowledges. Claim to carry forward: "agent beats long-horizon
 DCA on CAGR at equal risk; short-horizon DCA remains unbeaten on
 risk-adjusted terms, like everything else on the frontier."
 
+## v8: calendar ablation — distillation-driven fix confirmed (2026-08-02)
+
+The distilled tree flagged `month` as a decision driver (likely spurious
+seasonality). Retrained without dow/month (ppo_v8_nocal, 8 folds × 10
+seeds): **Sharpe 1.052 (vs 1.047), MaxDD −11.5% (vs −12.2%), Calmar 1.123
+(best of any arm), turnover 11.9 (vs 13.6).** Kill criterion said drop if
+no >0.02 Sharpe loss — ablation actually improved everything. **Calendar
+features permanently removed; ppo_v8_nocal is the new reference policy.**
+This closes the loop: interpretability analysis → hypothesis → ablation →
+cleaner model. The interpretation-driven workflow works.
+
 ## Honest bottom line (as of v3)
 
 Everything found so far is consistent with the literature synthesis: RL
