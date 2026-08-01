@@ -31,6 +31,20 @@ CONFIGS = {
                      "switch_penalty_bps": 5.0, "ent_coef": 0.005},
     "ppo_v4_resid_nosp": {"n_boot_paths": 3, "residual": True,
                           "ent_coef": 0.005},
+    # v5 scaling sweep around the v4 recipe (one axis at a time)
+    "ppo_v5_500k": {"n_boot_paths": 3, "residual": True,
+                    "switch_penalty_bps": 5.0, "ent_coef": 0.005},
+    "ppo_v5_big": {"n_boot_paths": 3, "residual": True,
+                   "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                   "net_arch": [256, 256]},
+    "ppo_v5_boot7": {"n_boot_paths": 7, "n_envs": 8, "residual": True,
+                     "switch_penalty_bps": 5.0, "ent_coef": 0.005},
+    "ppo_v5_gamma90": {"n_boot_paths": 3, "residual": True,
+                       "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                       "gamma": 0.90},
+    "ppo_v5_lawa": {"n_boot_paths": 3, "residual": True,
+                    "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                    "lawa_k": 8},
 }
 
 

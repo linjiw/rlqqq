@@ -1,0 +1,52 @@
+50 era-holdout runs on NDX
+[  1/50] E1 s4: test_sh=-0.46 cagr=-0.030 exp=0.25 to= 21.5
+[  2/50] E1 s6: test_sh=-0.35 cagr=-0.024 exp=0.30 to=  7.2
+[  3/50] E1 s3: test_sh=-0.89 cagr=-0.063 exp=0.22 to= 15.8
+[  4/50] E1 s2: test_sh=-0.47 cagr=-0.038 exp=0.28 to= 12.4
+[  5/50] E1 s1: test_sh=-0.29 cagr= 0.006 exp=0.21 to=  8.2
+[  6/50] E1 s5: test_sh=-0.36 cagr=-0.016 exp=0.27 to=  7.6
+[  7/50] E1 s0: test_sh=-0.20 cagr= 0.031 exp=0.11 to=  3.1
+[  8/50] E1 s8: test_sh= 0.17 cagr= 0.060 exp=0.19 to= 13.0
+[  9/50] E1 s7: test_sh=-0.45 cagr=-0.027 exp=0.26 to= 19.0
+[ 10/50] E2 s0: test_sh= 0.27 cagr= 0.039 exp=0.34 to= 48.1
+[ 11/50] E1 s9: test_sh=-0.88 cagr=-0.061 exp=0.20 to= 18.2
+[ 12/50] E2 s2: test_sh= 0.24 cagr= 0.032 exp=0.29 to= 20.8
+[ 13/50] E2 s3: test_sh= 0.05 cagr= 0.013 exp=0.33 to= 28.3
+[ 14/50] E2 s1: test_sh=-0.33 cagr=-0.044 exp=0.42 to= 31.0
+[ 15/50] E2 s5: test_sh= 0.26 cagr= 0.043 exp=0.48 to=  9.3
+[ 16/50] E2 s4: test_sh= 0.28 cagr= 0.043 exp=0.38 to= 10.2
+[ 17/50] E2 s6: test_sh=-0.14 cagr= 0.002 exp=0.19 to=  9.7
+[ 18/50] E2 s7: test_sh= 0.35 cagr= 0.048 exp=0.34 to= 21.0
+[ 19/50] E2 s8: test_sh=-0.02 cagr= 0.003 exp=0.31 to= 29.9
+[ 20/50] E2 s9: test_sh= 0.20 cagr= 0.030 exp=0.39 to= 19.5
+[ 21/50] E3 s0: test_sh= 0.31 cagr= 0.056 exp=0.73 to= 35.5
+[ 22/50] E3 s2: test_sh= 0.34 cagr= 0.057 exp=0.72 to= 23.1
+[ 23/50] E3 s1: test_sh=-0.05 cagr= 0.010 exp=0.72 to= 27.8
+[ 24/50] E3 s3: test_sh= 0.19 cagr= 0.038 exp=0.61 to= 22.0
+[ 25/50] E3 s4: test_sh= 0.13 cagr= 0.032 exp=0.70 to= 31.4
+[ 26/50] E3 s5: test_sh= 0.14 cagr= 0.033 exp=0.63 to= 21.9
+[ 27/50] E3 s6: test_sh= 0.20 cagr= 0.043 exp=0.89 to=  4.8
+[ 28/50] E3 s7: test_sh=-0.43 cagr=-0.027 exp=0.58 to= 44.2
+[ 29/50] E3 s9: test_sh= 0.05 cagr= 0.024 exp=0.67 to=  9.3
+[ 30/50] E3 s8: test_sh= 0.63 cagr= 0.093 exp=0.68 to= 24.3
+[ 31/50] E4 s0: test_sh= 0.59 cagr= 0.113 exp=0.64 to= 55.4
+[ 32/50] E4 s2: test_sh= 0.17 cagr= 0.060 exp=0.68 to= 27.1
+[ 33/50] E4 s1: test_sh= 0.36 cagr= 0.075 exp=0.49 to= 41.6
+[ 34/50] E4 s3: test_sh= 0.06 cagr= 0.047 exp=0.56 to= 30.4
+[ 35/50] E4 s4: test_sh= 0.57 cagr= 0.106 exp=0.55 to= 37.1
+[ 36/50] E4 s6: test_sh= 0.46 cagr= 0.088 exp=0.51 to= 17.9
+[ 37/50] E4 s5: test_sh= 0.42 cagr= 0.092 exp=0.69 to= 39.2
+[ 38/50] E4 s7: test_sh= 0.34 cagr= 0.076 exp=0.52 to= 39.5
+[ 39/50] E4 s8: test_sh= 0.24 cagr= 0.065 exp=0.54 to= 36.2
+[ 40/50] E4 s9: test_sh= 0.61 cagr= 0.120 exp=0.75 to= 29.2
+[ 41/50] E5 s0: test_sh= 0.10 cagr= 0.011 exp=0.31 to= 29.2
+[ 42/50] E5 s1: test_sh= 0.36 cagr= 0.046 exp=0.45 to= 24.6
+[ 43/50] E5 s2: test_sh= 0.20 cagr= 0.023 exp=0.43 to= 31.2
+[ 44/50] E5 s3: test_sh= 0.97 cagr= 0.134 exp=0.48 to= 23.7
+[ 45/50] E5 s4: test_sh= 0.34 cagr= 0.044 exp=0.41 to= 30.2
+[ 46/50] E5 s5: test_sh= 0.81 cagr= 0.113 exp=0.45 to= 31.7
+[ 47/50] E5 s6: test_sh= 0.79 cagr= 0.111 exp=0.51 to= 23.4
+[ 48/50] E5 s7: test_sh= 0.45 cagr= 0.053 exp=0.40 to= 27.6
+[ 49/50] E5 s8: test_sh= 0.30 cagr= 0.040 exp=0.46 to= 18.6
+[ 50/50] E5 s9: test_sh= 0.32 cagr= 0.042 exp=0.48 to= 20.2
+done in 9.5 min

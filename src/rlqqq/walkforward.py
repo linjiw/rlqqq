@@ -41,6 +41,25 @@ class FoldSpec:
     test_end: str
 
 
+def era_holdout_folds() -> list[FoldSpec]:
+    """Out-of-era validation folds: test windows 2000-2009 (dot-com crash,
+    2003-07 bull, GFC). NO design decision in this study ever used these
+    windows as test data - the recipe was frozen on 2010-2025 evidence.
+    NDX data starts 1990-01; embargo matches the main protocol."""
+    return [
+        FoldSpec("E1", "1990-01-01", "1997-12-31", "1998-01-31", "1999-12-31",
+                 "2000-01-31", "2001-12-31"),
+        FoldSpec("E2", "1990-01-01", "1999-12-31", "2000-01-31", "2001-12-31",
+                 "2002-01-31", "2003-12-31"),
+        FoldSpec("E3", "1990-01-01", "2001-12-31", "2002-01-31", "2003-12-31",
+                 "2004-01-31", "2005-12-31"),
+        FoldSpec("E4", "1990-01-01", "2003-12-31", "2004-01-31", "2005-12-31",
+                 "2006-01-31", "2007-12-31"),
+        FoldSpec("E5", "1990-01-01", "2005-12-31", "2006-01-31", "2007-12-31",
+                 "2008-01-31", "2009-12-31"),
+    ]
+
+
 def load_folds(symbol_start: str = "1994-01-01") -> list[FoldSpec]:
     splits = json.loads((PROCESSED / "splits.json").read_text())
     folds = []
@@ -121,6 +140,8 @@ def train_and_eval_one(
     from stable_baselines3.common.vec_env import DummyVecEnv
 
     hp = hp or {}
+    n_envs = hp.get("n_envs", n_envs)
+    episode_len = hp.get("episode_len", episode_len)
     t0 = time.time()
 
     train = market.slice(fold.train_start, fold.train_end)
@@ -152,7 +173,38 @@ def train_and_eval_one(
 
     venv = DummyVecEnv([mk(i) for i in range(n_envs)])
     model = make_ppo(venv, seed, hp)
-    model.learn(total_timesteps=timesteps, progress_bar=False)
+
+    # LAWA: uniform weight-average of the last K checkpoints over the final
+    # third of training (arXiv:2209.14981 / 2411.13169). Kills checkpoint
+    # selection; normalizer is window-fit and constant so no stat mismatch.
+    lawa_k = hp.get("lawa_k", 0)
+    if lawa_k > 0:
+        import torch
+        from stable_baselines3.common.callbacks import BaseCallback
+
+        class SnapshotCB(BaseCallback):
+            def __init__(self, at_steps):
+                super().__init__()
+                self.at = sorted(at_steps)
+                self.snaps = []
+
+            def _on_step(self) -> bool:
+                if self.at and self.num_timesteps >= self.at[0]:
+                    self.at.pop(0)
+                    self.snaps.append({k: v.detach().clone() for k, v in
+                                       self.model.policy.state_dict().items()})
+                return True
+
+        marks = [int(timesteps * (2/3 + (1/3) * (j + 1) / lawa_k))
+                 for j in range(lawa_k)]
+        cb = SnapshotCB(marks)
+        model.learn(total_timesteps=timesteps, progress_bar=False, callback=cb)
+        if len(cb.snaps) >= 2:
+            avg = {k: torch.stack([s[k].float() for s in cb.snaps]).mean(0)
+                   for k in cb.snaps[0]}
+            model.policy.load_state_dict(avg)
+    else:
+        model.learn(total_timesteps=timesteps, progress_bar=False)
 
     val_run = run_policy(val, norm, model, cost_bps=cost_bps, discrete=discrete,
                          residual=residual)
