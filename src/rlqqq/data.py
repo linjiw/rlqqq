@@ -80,7 +80,7 @@ def har_rv_features(px: pd.DataFrame) -> pd.DataFrame:
 
 
 def load_market(symbol: str = "SPY", with_context: bool = True,
-                with_har: bool = False) -> MarketData:
+                with_har: bool = False, drop_calendar: bool = False) -> MarketData:
     px = pd.read_parquet(PROCESSED / f"prices_{symbol}.parquet")
     feats = pd.read_parquet(PROCESSED / f"features_{symbol}.parquet")
 
@@ -103,6 +103,9 @@ def load_market(symbol: str = "SPY", with_context: bool = True,
         cols = list(F.columns)
     if with_har:
         F = F.join(har_rv_features(px))
+        cols = list(F.columns)
+    if drop_calendar:
+        F = F.drop(columns=[c for c in ("dow", "month") if c in F.columns])
         cols = list(F.columns)
 
     df = pd.DataFrame({"ret": nxt_ret, "cash": cash_daily}, index=px.index).join(F)

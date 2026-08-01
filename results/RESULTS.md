@@ -199,6 +199,32 @@ vt10 rule → 0.42 exposure; vt20-cap1.5 rule → 0.84; v4 agent ensemble →
 0.35 (0.84× its baseline — mildly defensive; its contrarian add-exposure
 signal triggers in deeper drawdowns than this).
 
+## Model understanding + DCA granularity finding (2026-08-02)
+
+**Distillation** (`model_understanding_report.md`): the ensemble's decision
+is 45% linearly explainable. Core logic: *add exposure above vol-target when
+vol is high and price below trend BUT volume isn't panicking; shade down in
+calm overbought markets.* COVID crash is the exception that proves the
+volume-gate: the agent CUT below baseline during panic liquidation (mult
+0.92) while ADDing in all 8 grinding drawdowns (mult 1.08–1.16). Red flag:
+`month` appears in the distilled tree — calendar ablation queued.
+
+**Tilt-transfer validated out-of-era**: multiplier × vt20cap1.5 on NDX
+2000–2009: ΔSharpe vs B&H **+0.26 [+0.02, +0.51] SIG**; ≈ neutral vs the
+leveraged rule; −51% MaxDD discloses the leverage tail-risk cost.
+
+**DCA granularity finding (honest correction of emphasis):** whether the
+agent "beats DCA" depends on the DCA horizon. Against a LONG-horizon DCA
+(16-year continuous drip, which converges to B&H): agent wins CAGR both
+symbols (+0.8/+1.1pp), ties Sharpe. Against SHORT-horizon DCA (fresh 2-year
+ramp per fold, avg exposure ~0.5, very defensive): pooled across 21
+asset-fold segments the agent is **significantly WORSE on Sharpe (−0.16
+[−0.29, −0.02])**, tie on CAGR. A 2-year DCA ramp is a surprisingly strong
+defensive benchmark — stronger than the literature (which benchmarks
+lump-sum) acknowledges. Claim to carry forward: "agent beats long-horizon
+DCA on CAGR at equal risk; short-horizon DCA remains unbeaten on
+risk-adjusted terms, like everything else on the frontier."
+
 ## Honest bottom line (as of v3)
 
 Everything found so far is consistent with the literature synthesis: RL

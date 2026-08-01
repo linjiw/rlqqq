@@ -66,6 +66,11 @@ CONFIGS = {
                           "switch_penalty_bps": 5.0, "ent_coef": 0.005,
                           "pool_symbols": ["SPY", "NDX", "GSPC"],
                           "max_exposure": 1.5},
+    # v8: calendar ablation (distillation flagged `month` as a decision
+    # driver - likely spurious seasonality fitting).
+    "ppo_v8_nocal": {"n_boot_paths": 3, "residual": True,
+                     "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                     "drop_calendar": True},
 }
 
 
@@ -77,7 +82,8 @@ def one_run(args):
 
     hp = dict(CONFIGS.get(config, {}))
     with_har = hp.pop("with_har", False)
-    market = load_market(symbol, with_har=with_har)
+    drop_calendar = hp.pop("drop_calendar", False)
+    market = load_market(symbol, with_har=with_har, drop_calendar=drop_calendar)
     fold = load_folds()[fold_idx]
     rec = train_and_eval_one(
         market, fold, seed=seed, config_name=config, timesteps=timesteps,
