@@ -87,10 +87,11 @@ def load_market(symbol: str = "SPY", with_context: bool = True,
     # next-day total return earned by holding from close t to close t+1
     nxt_ret = px["adj_close"].pct_change().shift(-1)
 
-    # daily cash return from 3m T-bill discount yield (^IRX is pct*10... it is
-    # quoted as percent already after our /10 in context building; use raw here)
+    # daily cash return from 3m T-bill discount yield. NOTE: unlike ^TNX/^FVX
+    # (which quote yield*10), ^IRX quotes the discount rate in percent
+    # directly (verified: 1990-06 raw value 7.68 vs historical 3m T-bill
+    # ~7.7%). Do NOT divide by 10.
     irx = pd.read_csv(RAW / "yf_IDX_IRX.csv", parse_dates=["Date"]).set_index("Date")["Close"]
-    irx = irx / 10.0  # ^IRX quotes yield*10 -> percent
     cash_daily = (irx.reindex(px.index).ffill() / 100.0 / 252.0).fillna(0.0)
 
     cols = list(feats.columns)
