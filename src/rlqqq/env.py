@@ -23,11 +23,25 @@ from typing import Any
 
 import gymnasium as gym
 import numpy as np
+import pandas as pd
 from gymnasium import spaces
 
 from .data import MarketData, Normalizer
 
 EXPOSURE_LEVELS = np.array([0.0, 0.5, 1.0])
+RESIDUAL_MULTIPLIERS = np.array([0.5, 1.0, 1.5])
+
+
+def causal_vol_target(ret: np.ndarray, target: float = 0.10,
+                      lookback: int = 21) -> np.ndarray:
+    """Vol-target exposure computable on ANY return series (incl. synthetic
+    bootstrap paths). ret[t] is the t->t+1 return; the exposure decided at
+    close t uses only returns realized by close t, i.e. ret[t-lookback..t-1].
+    """
+    r = pd.Series(np.asarray(ret, dtype=np.float64))
+    rv = (r.rolling(lookback).std() * np.sqrt(252)).shift(1)
+    w = (target / rv).clip(upper=1.0)
+    return w.fillna(0.5).to_numpy()  # neutral default during warmup
 
 
 def portfolio_returns(
@@ -64,6 +78,8 @@ class ExposureTradingEnv(gym.Env):
         w_init: float = 0.0,
         seed: int | None = None,
         reward_lambda: float = 0.0,
+        residual: bool = False,
+        switch_penalty_bps: float = 0.0,
     ):
         super().__init__()
         self.data = data
@@ -76,14 +92,24 @@ class ExposureTradingEnv(gym.Env):
         # lambda=0 recovers pure log-wealth). Training-only knob - evaluation
         # always uses raw net returns.
         self.reward_lambda = float(reward_lambda)
+        # residual mode: actions are multipliers on a causal vol-target
+        # baseline; action index 1 (x1.0) IS the baseline policy.
+        self.residual = residual
+        # training-only extra cost per unit turnover (bps) - shapes the policy
+        # toward fewer switches; realized accounting still uses cost_bps.
+        self.switch_penalty_bps = float(switch_penalty_bps)
         self._rng = np.random.default_rng(seed)
+        self._baseline = causal_vol_target(data.ret) if residual else None
 
         n_feat = data.feat.shape[1]
-        # observation = normalized features + current exposure
+        # observation = normalized features + current exposure (+ baseline w)
+        obs_dim = n_feat + 1 + (1 if residual else 0)
         self.observation_space = spaces.Box(
-            low=-np.inf, high=np.inf, shape=(n_feat + 1,), dtype=np.float32
+            low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
         )
-        if discrete:
+        if residual:
+            self.action_space = spaces.Discrete(len(RESIDUAL_MULTIPLIERS))
+        elif discrete:
             self.action_space = spaces.Discrete(len(EXPOSURE_LEVELS))
         else:
             self.action_space = spaces.Box(low=0.0, high=1.0, shape=(1,), dtype=np.float32)
@@ -96,11 +122,15 @@ class ExposureTradingEnv(gym.Env):
     # -- helpers ---------------------------------------------------------
 
     def _obs(self) -> np.ndarray:
-        return np.concatenate(
-            [self._feat_norm[self._t], np.float32([self._w])]
-        ).astype(np.float32)
+        parts = [self._feat_norm[self._t], np.float32([self._w])]
+        if self.residual:
+            parts.append(np.float32([self._baseline[self._t]]))
+        return np.concatenate(parts).astype(np.float32)
 
     def _action_to_exposure(self, action: Any) -> float:
+        if self.residual:
+            mult = RESIDUAL_MULTIPLIERS[int(action)]
+            return float(np.clip(mult * self._baseline[self._t], 0.0, 1.0))
         if self.discrete:
             return float(EXPOSURE_LEVELS[int(action)])
         return float(np.clip(np.asarray(action).reshape(-1)[0], 0.0, 1.0))
@@ -131,7 +161,9 @@ class ExposureTradingEnv(gym.Env):
             + (1.0 - w) * self.data.cash[t]
             - (self.cost_bps / 1e4) * turnover
         )
-        reward = float(np.log1p(net)) - self.reward_lambda * float(net) ** 2
+        reward = (float(np.log1p(net))
+                  - self.reward_lambda * float(net) ** 2
+                  - (self.switch_penalty_bps / 1e4) * turnover)
         self._w = w
         self._t += 1
         terminated = self._t >= self._end
@@ -150,11 +182,13 @@ def run_policy(
     cost_bps: float = 2.0,
     discrete: bool = True,
     deterministic: bool = True,
+    residual: bool = False,
 ) -> dict:
     """Roll a trained SB3 policy over a full data slice once and return the
     exposure series + net daily returns (via the shared accounting identity)."""
     env = ExposureTradingEnv(env_data, normalizer, cost_bps=cost_bps,
-                             discrete=discrete, episode_len=None)
+                             discrete=discrete, episode_len=None,
+                             residual=residual)
     obs, _ = env.reset()
     exposures = np.empty(len(env_data))
     for i in range(len(env_data)):

@@ -66,6 +66,33 @@ DSR = 0.013 (N=484). Seed IQM Sharpe 0.97 [0.86, 1.08].
 - Regime: agent beats B&H Sharpe in 5/8 folds — all four high-vol folds;
   loses only in the calm 2012–2017 bulls. Every fold: agent MaxDD < B&H.
 
+## v4: residual-on-vol-target agents (2026-08-01)
+
+Playbook items 1-3 implemented: actions = multipliers {0.5, 1.0, 1.5} on a
+causal vol-target baseline (action 1.0 ≡ baseline, verified by test), 5bp
+training-only switch penalty, mean-exposure seed ensembles. QQQ, 8 folds ×
+10 seeds each:
+
+| policy | CAGR | Sharpe | MaxDD | Calmar | turnover |
+|---|---|---|---|---|---|
+| buy-and-hold | 20.7% | 1.007 | −29.6% | 0.70 | — |
+| vol-target 10% | 12.0% | 1.103 | −11.9% | 1.01 | 5 |
+| ppo_v2_boot ens | 13.5% | 1.064 | −14.9% | 0.90 | 33 |
+| **ppo_v4_resid ens** | **12.7%** | **1.117** | **−12.7%** | 1.00 | **14** |
+| ppo_v4_resid_nosp ens | 12.3% | 1.112 | −11.7% | 1.05 | 15 |
+
+- **First arm to edge past vol-targeting on BOTH Sharpe (1.117 vs 1.103) and
+  CAGR (12.7% vs 12.0%)** — ΔSharpe vs VT +0.01 [−0.07,+0.10], i.e. a
+  statistical tie, but the agent now sits ON the published frontier for this
+  asset class (research verdict: no credible daily single-index result
+  >1.1 net Sharpe post-2010 exists).
+- vs B&H: ΔSharpe +0.12 [−0.09,+0.32]; CAGR gap −8pp remains (structural:
+  avg exposure 0.64).
+- Turnover collapsed 33→14 (residual anchoring + switch penalty); the
+  switch penalty itself added little beyond the anchoring (nosp ≈ same).
+- Anchoring converted the seed lottery into "baseline ± small learned
+  deviation" — worst case is now the baseline, as designed.
+
 ## Honest bottom line (as of v3)
 
 Everything found so far is consistent with the literature synthesis: RL

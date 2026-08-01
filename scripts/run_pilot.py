@@ -24,6 +24,13 @@ CONFIGS = {
     "ppo_v3_cont": {"n_boot_paths": 3, "discrete": False},
     "ppo_v3_cont_harv": {"n_boot_paths": 3, "discrete": False, "with_har": True},
     "ppo_v3_harv": {"n_boot_paths": 3, "with_har": True},
+    # v4: residual actions (multipliers on causal vol-target) + switch penalty,
+    # on top of the winning bootstrap recipe. ent_coef lowered: residual mode
+    # needs less exploration (action 1 = baseline is already good).
+    "ppo_v4_resid": {"n_boot_paths": 3, "residual": True,
+                     "switch_penalty_bps": 5.0, "ent_coef": 0.005},
+    "ppo_v4_resid_nosp": {"n_boot_paths": 3, "residual": True,
+                          "ent_coef": 0.005},
 }
 
 
