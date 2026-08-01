@@ -231,6 +231,7 @@
       payload?.schemaVersion !== 1 ||
       !payload.asOf ||
       !payload.market ||
+      !payload.model?.displayName ||
       !signal ||
       !history ||
       !Array.isArray(history.dates) ||
@@ -244,7 +245,7 @@
 
   function renderLiveSignal() {
     const payload = state.liveData;
-    const { market, signal, source } = payload;
+    const { market, model, signal, source } = payload;
     const sourceDate = new Date(`${payload.asOf}T00:00:00Z`);
     const generatedDate = new Date(payload.generatedAt);
     const generatedAgeHours = (Date.now() - generatedDate.getTime()) / 3_600_000;
@@ -259,7 +260,8 @@
     elements.liveAsOf.textContent = `As of ${dateFormatter.format(sourceDate)}`;
 
     elements.liveLearnedTarget.textContent = `${signal.learnedMean.toFixed(2)}x`;
-    elements.livePosture.textContent = signal.researchPosture;
+    elements.livePosture.textContent =
+      `${model.displayName} / ${signal.researchPosture}`;
     elements.liveVt10.textContent = `${signal.vt10Exposure.toFixed(2)}x`;
     elements.liveTilt.textContent = `${signal.tiltMultiplier.toFixed(2)}x`;
     elements.liveSeedRange.textContent =
@@ -509,7 +511,7 @@
   function populatePolicyTable() {
     const rows = [
       ["Highest observed return", "composite", "Post-hoc", "posthoc"],
-      ["Best robust learned model", "learned", "Era-tested", "robust"],
+      ["Audited v4 learned model", "learned", "Era-tested", "robust"],
       ["Best simple policy", "vt20", "No learning", ""],
       ["Primary benchmark", "qqq", "Reference", ""],
       ["Broad-market benchmark", "spy", "Reference", ""],

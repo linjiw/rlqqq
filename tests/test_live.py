@@ -9,6 +9,8 @@ import pandas as pd
 
 from rlqqq.live import (
     FEATURE_NAMES,
+    LEGACY_MODEL_VERSION,
+    LIVE_FEATURE_NAMES,
     MODEL_VERSION,
     FrozenActorEnsemble,
     append_forward_log,
@@ -22,6 +24,7 @@ from rlqqq.live import (
 
 ROOT = Path(__file__).resolve().parent.parent
 MODEL = ROOT / "models" / "live" / f"{MODEL_VERSION}.npz"
+LEGACY_MODEL = ROOT / "models" / "live" / f"{LEGACY_MODEL_VERSION}.npz"
 
 
 def checked_replay():
@@ -54,8 +57,13 @@ def test_online_features_exactly_match_training_snapshot():
     )
 
 
-def test_numpy_actors_match_saved_sb3_holdout_exposures():
-    _, _, _, replay = checked_replay()
+def test_v4_numpy_actors_match_saved_sb3_holdout_exposures():
+    bundle = FrozenActorEnsemble.load(LEGACY_MODEL)
+    frames = load_checked_market_frames(ROOT / "data" / "raw")
+    features = build_feature_frame(
+        frames["QQQ"], frames["^VIX"], frames["^TNX"], frames["^IRX"]
+    )
+    replay = replay_frozen_policy(bundle, features, frames["QQQ"])
     actual = replay.attrs["actor_exposure"]
     for seed in range(10):
         with np.load(
@@ -75,6 +83,14 @@ def test_numpy_actors_match_saved_sb3_holdout_exposures():
             )
 
 
+def test_current_actor_uses_no_calendar_features():
+    bundle = FrozenActorEnsemble.load(MODEL)
+    assert list(bundle.feature_names) == LIVE_FEATURE_NAMES
+    assert "dow" not in bundle.feature_names
+    assert "month" not in bundle.feature_names
+    assert bundle.model_version == MODEL_VERSION
+
+
 def test_signal_contract_reproduces_latest_snapshot(tmp_path):
     bundle, _, _, replay = checked_replay()
     payload = build_signal_payload(
@@ -88,11 +104,14 @@ def test_signal_contract_reproduces_latest_snapshot(tmp_path):
     assert payload["market"]["price"] == 687.99
     assert payload["signal"]["stance"] == "Defensive"
     assert abs(payload["signal"]["vt10Exposure"] - 0.42) <= 0.01
-    assert abs(payload["signal"]["learnedMean"] - 0.40) <= 0.01
+    assert abs(payload["signal"]["learnedMean"] - 0.46) <= 0.01
     assert payload["signal"]["learnedMin"] < payload["signal"]["learnedMean"]
     assert payload["signal"]["learnedMax"] > payload["signal"]["learnedMean"]
     assert len(payload["history"]["dates"]) == 90
     assert payload["model"]["trainCutoff"] == "2023-12-31"
+    assert payload["model"]["version"] == MODEL_VERSION
+    assert payload["model"]["displayName"] == "v8 no-calendar"
+    assert payload["model"]["featureCount"] == 22
 
     signal_path = tmp_path / "signal.json"
     log_path = tmp_path / "forward.csv"
@@ -104,4 +123,6 @@ def test_signal_contract_reproduces_latest_snapshot(tmp_path):
         rows = list(csv.DictReader(handle))
     assert len(rows) == 1
     assert rows[0]["date"] == "2026-07-31"
+    assert rows[0]["model_version"] == MODEL_VERSION
     assert signal_path.read_text(encoding="utf-8").endswith("\n")
+    assert "\r" not in log_path.read_text(encoding="utf-8")

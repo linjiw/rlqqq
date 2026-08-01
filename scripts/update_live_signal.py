@@ -90,7 +90,7 @@ def main() -> None:
     print(
         f"{payload['asOf']} QQQ {market['price']:.2f} | "
         f"VT10 {signal['vt10Exposure']:.2f}x | "
-        f"v4 {signal['learnedMean']:.2f}x "
+        f"{payload['model']['displayName']} {signal['learnedMean']:.2f}x "
         f"[{signal['learnedMin']:.2f}, {signal['learnedMax']:.2f}] | "
         f"{signal['stance']}"
     )

@@ -1,8 +1,9 @@
-# Understanding the Best Model (2026-08-02)
+# Understanding the Audited v4 Model (2026-08-02)
 
 Subject: `ppo_v4_resid` 10-seed mean-exposure ensemble on QQQ — the study's
-core validated policy (Sharpe 1.047 vs VT 1.033 / B&H 0.947, 2010–2025;
-significant B&H beat on the NDX 2000s era holdout).
+audited legacy and historical-replay policy (Sharpe 1.047 vs VT 1.033 / B&H
+0.947, 2010–2025; significant B&H beat on the NDX 2000s era holdout). The
+later v8 no-calendar ablation is the current reference policy.
 
 ## 1. The decision, distilled
 

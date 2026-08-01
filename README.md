@@ -10,8 +10,9 @@ after realistic costs, with statistically honest evaluation.
 The [RLQQQ policy replay](https://linjiw.github.io/rlqqq/) animates the
 2010-2025 walk-forward decisions, compares normalized wealth with QQQ and
 SPY, exposes the volatility base and learned residual tilt at every date, and
-publishes the frozen v4 ensemble's latest delayed-close output. It also
-exports the replay as WebM video or a PNG frame.
+publishes the v8 no-calendar reference's latest delayed-close output. The
+animated historical series remains the audited v4 replay and is labeled as
+such. The dashboard also exports the replay as WebM video or a PNG frame.
 
 Rebuild its checked-in data bundle with:
 
@@ -19,12 +20,12 @@ Rebuild its checked-in data bundle with:
 .venv/bin/python scripts/build_web_data.py
 ```
 
-The live signal is generated server-side and served as static JSON; no market
-API key or model runtime is exposed in the browser. Rebuild the frozen actor
-bundle and checked snapshot with:
+The live signal is generated in GitHub Actions and served as static JSON; no
+market API key or model runtime is exposed in the browser. Rebuild the frozen
+v8 actor bundle and checked snapshot with:
 
 ```bash
-.venv/bin/python scripts/export_live_policy.py --workers 7
+.venv/bin/python scripts/export_live_policy.py --workers 7 --force
 .venv/bin/python scripts/update_live_signal.py \
   --provider checked \
   --generated-at 2026-08-01T12:00:00Z

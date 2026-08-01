@@ -1,4 +1,4 @@
-"""Train and export the frozen v4 ensemble as a pure-NumPy actor bundle.
+"""Train and export the frozen v8 ensemble as a pure-NumPy actor bundle.
 
 This is a release-time operation, not part of the daily workflow. It does not
 append trial records or alter the historical evaluation series.
@@ -21,7 +21,8 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from rlqqq.data import Normalizer, load_market
 from rlqqq.live import (
-    FEATURE_NAMES,
+    LEGACY_MODEL_VERSION,
+    LIVE_FEATURE_NAMES,
     MODEL_VERSION,
     TRAIN_CUTOFF,
     FrozenActorEnsemble,
@@ -32,8 +33,10 @@ from rlqqq.live import (
 from rlqqq.walkforward import FoldSpec
 
 OUTPUT = ROOT / "models" / "live" / f"{MODEL_VERSION}.npz"
+LEGACY_OUTPUT = ROOT / "models" / "live" / f"{LEGACY_MODEL_VERSION}.npz"
 MANIFEST = ROOT / "models" / "live" / "manifest.json"
-SERIES = ROOT / "results" / "series"
+POLICY_NAME = "v8 no-calendar"
+CONFIG_NAME = "ppo_v8_nocal"
 
 FOLD = FoldSpec(
     name="H2026",
@@ -70,7 +73,7 @@ def train_seed(seed: int, timesteps: int) -> dict:
     from rlqqq.walkforward import make_ppo
 
     torch.set_num_threads(1)
-    market = load_market("QQQ")
+    market = load_market("QQQ", drop_calendar=True)
     train = market.slice(FOLD.train_start, FOLD.train_end)
     test = market.slice(FOLD.test_start, FOLD.test_end)
     normalizer = Normalizer.fit(train.feat)
@@ -112,21 +115,6 @@ def train_seed(seed: int, timesteps: int) -> dict:
         vt_target=0.10,
     )
 
-    expected_path = SERIES / f"holdout_v4_resid_QQQ_H2026_s{seed}.npz"
-    with np.load(expected_path) as expected:
-        expected_exposure = expected["test_exposure"]
-        expected_dates = expected["test_dates"]
-    if not np.array_equal(
-        test.index.to_numpy(dtype="datetime64[ns]").astype("int64"),
-        expected_dates,
-    ):
-        raise AssertionError(f"Seed {seed}: holdout dates changed")
-    max_error = float(np.max(np.abs(run["exposure"] - expected_exposure)))
-    if max_error > 1e-7:
-        raise AssertionError(
-            f"Seed {seed}: regenerated exposure differs by {max_error:.3g}"
-        )
-
     state = model.policy.state_dict()
     arrays = {
         output_name: state[state_name].detach().cpu().numpy().astype(np.float32)
@@ -136,7 +124,8 @@ def train_seed(seed: int, timesteps: int) -> dict:
     return {
         "seed": seed,
         "arrays": arrays,
-        "max_sb3_exposure_error": max_error,
+        "sb3_dates": test.index.to_numpy(dtype="datetime64[ns]").astype("int64"),
+        "sb3_exposure": run["exposure"],
     }
 
 
@@ -150,12 +139,13 @@ def main() -> None:
     if OUTPUT.exists() and not args.force:
         raise SystemExit(f"{OUTPUT} already exists; pass --force to replace it")
 
-    market = load_market("QQQ")
+    market = load_market("QQQ", drop_calendar=True)
     train = market.slice(FOLD.train_start, FOLD.train_end)
     normalizer = Normalizer.fit(train.feat)
-    if market.feat_names != FEATURE_NAMES:
+    if market.feat_names != LIVE_FEATURE_NAMES:
         raise AssertionError(
-            f"Training features changed: {market.feat_names} != {FEATURE_NAMES}"
+            f"Training features changed: {market.feat_names} != "
+            f"{LIVE_FEATURE_NAMES}"
         )
 
     print(
@@ -172,8 +162,7 @@ def main() -> None:
             result = future.result()
             completed.append(result)
             print(
-                f"  seed {result['seed']}: exact holdout parity "
-                f"(max error {result['max_sb3_exposure_error']:.1e})",
+                f"  seed {result['seed']}: trained and evaluated in memory",
                 flush=True,
             )
 
@@ -186,9 +175,11 @@ def main() -> None:
     np.savez_compressed(
         OUTPUT,
         model_version=np.array(MODEL_VERSION),
+        policy_name=np.array(POLICY_NAME),
+        config_name=np.array(CONFIG_NAME),
         train_cutoff=np.array(TRAIN_CUTOFF),
         seeds=np.arange(10, dtype=np.int16),
-        feature_names=np.array(FEATURE_NAMES),
+        feature_names=np.array(LIVE_FEATURE_NAMES),
         normalizer_mean=normalizer.mean.astype(np.float64),
         normalizer_std=normalizer.std.astype(np.float64),
         **arrays,
@@ -204,13 +195,13 @@ def main() -> None:
     live_dates = replay.index
 
     numpy_errors = []
-    for seed in range(10):
-        with np.load(
-            SERIES / f"holdout_v4_resid_QQQ_H2026_s{seed}.npz"
-        ) as expected:
-            expected_exposure = expected["test_exposure"]
-            expected_dates = expected["test_dates"]
-        matched = live_dates.get_indexer(np.asarray(expected_dates, dtype="datetime64[ns]"))
+    for result in completed:
+        seed = result["seed"]
+        expected_exposure = result["sb3_exposure"]
+        expected_dates = result["sb3_dates"]
+        matched = live_dates.get_indexer(
+            np.asarray(expected_dates, dtype="datetime64[ns]")
+        )
         if np.any(matched < 0):
             raise AssertionError(f"Seed {seed}: NumPy replay is missing dates")
         error = float(
@@ -228,37 +219,61 @@ def main() -> None:
             )
 
     digest = hashlib.sha256(OUTPUT.read_bytes()).hexdigest()
+    legacy_digest = hashlib.sha256(LEGACY_OUTPUT.read_bytes()).hexdigest()
     manifest = {
-        "modelVersion": MODEL_VERSION,
-        "artifact": OUTPUT.name,
-        "artifactSha256": digest,
+        "schemaVersion": 2,
+        "currentModelVersion": MODEL_VERSION,
         "exportedAt": datetime.now(timezone.utc)
         .replace(microsecond=0)
         .isoformat()
         .replace("+00:00", "Z"),
-        "trainCutoff": TRAIN_CUTOFF,
-        "forwardReplayStart": "2026-01-01",
-        "ensembleSeeds": list(range(10)),
-        "architecture": "26 -> 64 tanh -> 64 tanh -> 3 categorical logits",
-        "residualMultipliers": [0.5, 1.0, 1.5],
-        "featureNames": FEATURE_NAMES,
-        "normalizer": (
-            f"QQQ train rows {train.index[0].date()} through "
-            f"{train.index[-1].date()}"
-        ),
-        "training": {
-            "timesteps": args.timesteps,
-            "bootstrapPaths": 3,
-            "episodeLength": 252,
-            "switchPenaltyBps": 5.0,
-            "entropyCoefficient": 0.005,
-        },
-        "validation": {
-            "sb3VsSavedHoldoutMaxAbsError": max(
-                result["max_sb3_exposure_error"] for result in completed
-            ),
-            "numpyVsSavedHoldoutMaxAbsError": max(numpy_errors),
-            "savedHoldoutEnd": "2026-07-30",
+        "models": {
+            MODEL_VERSION: {
+                "role": "current_reference",
+                "policyName": POLICY_NAME,
+                "config": CONFIG_NAME,
+                "artifact": OUTPUT.name,
+                "artifactSha256": digest,
+                "trainCutoff": TRAIN_CUTOFF,
+                "forwardReplayStart": "2026-01-01",
+                "ensembleSeeds": list(range(10)),
+                "architecture": "24 -> 64 tanh -> 64 tanh -> 3 categorical logits",
+                "residualMultipliers": [0.5, 1.0, 1.5],
+                "featureNames": LIVE_FEATURE_NAMES,
+                "normalizer": (
+                    f"QQQ train rows {train.index[0].date()} through "
+                    f"{train.index[-1].date()}"
+                ),
+                "training": {
+                    "timesteps": args.timesteps,
+                    "bootstrapPaths": 3,
+                    "episodeLength": 252,
+                    "switchPenaltyBps": 5.0,
+                    "entropyCoefficient": 0.005,
+                    "calendarFeatures": False,
+                },
+                "validation": {
+                    "numpyVsInMemorySb3MaxAbsError": max(numpy_errors),
+                    "comparisonWindowEnd": "2026-07-30",
+                    "holdoutStatus": (
+                        "The 2026 holdout was already spent before v8 selection; "
+                        "this is implementation parity, not a fresh model test."
+                    ),
+                },
+            },
+            LEGACY_MODEL_VERSION: {
+                "role": "audited_legacy_and_historical_replay",
+                "policyName": "v4 residual",
+                "config": "ppo_v4_resid",
+                "artifact": LEGACY_OUTPUT.name,
+                "artifactSha256": legacy_digest,
+                "trainCutoff": TRAIN_CUTOFF,
+                "featureCount": 24,
+                "validation": {
+                    "savedHoldoutParity": "Covered by tests/test_live.py",
+                    "savedHoldoutEnd": "2026-07-30",
+                },
+            },
         },
     }
     MANIFEST.write_text(

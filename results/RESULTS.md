@@ -196,8 +196,9 @@ the simple transfer construction above.
 
 **Live decision snapshot (2026-07-31, QQQ at 24% vol, −7.7% off peak):**
 vt10 rule → 0.42 exposure; vt20-cap1.5 rule → 0.84; v4 agent ensemble →
-0.35 (0.84× its baseline — mildly defensive; its contrarian add-exposure
-signal triggers in deeper drawdowns than this).
+0.40 (0.95× its baseline — mildly defensive; corrected after exact actor
+export exposed the original one-day action offset). Its contrarian
+add-exposure signal triggers in deeper drawdowns than this.
 
 ## Model understanding + DCA granularity finding (2026-08-02)
 

@@ -51,12 +51,13 @@
         <div class="overview-copy">
           <div class="eyebrow">
             <span class="status-dot" aria-hidden="true"></span>
-            Embargoed walk-forward replay
+            Audited v4 walk-forward replay
           </div>
-          <h1 id="page-title">Policy replay: QQQ, 2010-2025</h1>
+          <h1 id="page-title">Historical policy replay: QQQ, 2010-2025</h1>
           <p>
-            Daily out-of-sample decisions from the strongest observed policy,
-            its learned core, and the simple rule beneath it.
+            Daily out-of-sample v4 decisions, their learned core, and the
+            simple rule beneath them. The live panel uses the newer v8
+            no-calendar reference.
           </p>
         </div>
         <div class="overview-facts" aria-label="Evaluation facts">
@@ -80,7 +81,7 @@
           <div class="live-heading">
             <div>
               <span class="section-kicker">Latest delayed close</span>
-              <h2 id="live-title">Current frozen-policy output</h2>
+              <h2 id="live-title">Current reference-policy output</h2>
               <p>QQQ exposure for the next close-to-close session</p>
             </div>
             <div class="live-freshness">
@@ -95,12 +96,12 @@
           <div class="live-grid" id="live-grid" aria-busy="true">
             <article class="live-signal-panel">
               <div class="live-panel-label">
-                <span>Best robust model</span>
+                <span>Current reference model</span>
                 <span class="stance-badge is-defensive" id="live-stance">--</span>
               </div>
               <div class="live-target">
                 <strong id="live-learned-target">--</strong>
-                <span id="live-posture">Frozen v4 ensemble</span>
+                <span id="live-posture">v8 no-calendar ensemble</span>
               </div>
               <div
                 class="live-gauge"
@@ -135,7 +136,7 @@
                 </div>
               </dl>
               <p class="live-explanation" id="live-explanation">
-                Loading the latest frozen-policy decision.
+                Loading the latest reference-policy decision.
               </p>
             </article>
 
@@ -179,7 +180,7 @@
                   <h3>90-session signal path</h3>
                 </div>
                 <div class="chart-legend" aria-label="Live signal chart series">
-                  <span><i class="legend-swatch learned-swatch"></i>Frozen v4</span>
+                  <span><i class="legend-swatch learned-swatch"></i>v8 no-calendar</span>
                   <span><i class="legend-swatch rule-swatch"></i>VT10 anchor</span>
                   <span><i class="range-swatch"></i>Seed range</span>
                 </div>
@@ -200,10 +201,11 @@
           <aside class="live-disclosure" aria-label="Live signal limitations">
             <i data-lucide="flask-conical" aria-hidden="true"></i>
             <p>
-              <strong>Forward research signal.</strong>
-              Frozen through 2023, generated after the latest delayed close.
-              It is an exposure target, not personalized investment advice or
-              an execution order.
+              <strong>v8 no-calendar reference.</strong>
+              2010-2025 walk-forward: 12.90% CAGR, 1.052 Sharpe, -11.49%
+              maximum drawdown, and 1.123 Calmar. Frozen through 2023 and
+              generated after the latest delayed close. Research exposure
+              target, not personalized advice or an execution order.
             </p>
             <a
               href="https://github.com/linjiw/rlqqq/blob/master/results/forward_log.csv"
@@ -217,7 +219,7 @@
       <div class="dashboard-width">
         <section class="policy-toolbar" aria-label="Policy selection">
           <div>
-            <span class="field-label">Policy view</span>
+            <span class="field-label">Historical v4 policy view</span>
             <div class="segmented-control" role="group" aria-label="Policy view">
               <button
                 class="segment is-active"

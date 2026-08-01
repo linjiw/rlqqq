@@ -309,7 +309,7 @@ def build() -> dict:
         "learned": {
             "name": "PPO v4 residual ensemble",
             "shortName": "Learned core",
-            "status": "Best robust learned model",
+            "status": "Audited v4 learned model",
             "description": (
                 "Mean exposure across 10 PPO seeds, learned as a residual "
                 "around a causal 10% volatility target."

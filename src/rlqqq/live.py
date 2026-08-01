@@ -19,7 +19,8 @@ from typing import Mapping
 import numpy as np
 import pandas as pd
 
-MODEL_VERSION = "ppo_v4_resid_frozen_2023_v1"
+MODEL_VERSION = "ppo_v8_nocal_frozen_2023_v1"
+LEGACY_MODEL_VERSION = "ppo_v4_resid_frozen_2023_v1"
 TRAIN_CUTOFF = "2023-12-31"
 FORWARD_START = "2026-01-01"
 RESIDUAL_MULTIPLIERS = np.array([0.5, 1.0, 1.5], dtype=np.float64)
@@ -49,10 +50,14 @@ BASE_FEATURE_NAMES = [
 ]
 CONTEXT_FEATURE_NAMES = ["vix", "term_spread_10y_3m", "vix_chg_5d"]
 FEATURE_NAMES = BASE_FEATURE_NAMES + CONTEXT_FEATURE_NAMES
+LIVE_FEATURE_NAMES = [
+    name for name in FEATURE_NAMES if name not in {"dow", "month"}
+]
 
 FORWARD_LOG_FIELDS = [
     "date",
     "generated_at",
+    "model_version",
     "source",
     "qqq_close",
     "qqq_close_return",
@@ -77,6 +82,9 @@ FORWARD_LOG_FIELDS = [
 class FrozenActorEnsemble:
     """Ten deterministic MLP actors plus one shared feature normalizer."""
 
+    model_version: str
+    policy_name: str
+    train_cutoff: str
     feature_names: tuple[str, ...]
     normalizer_mean: np.ndarray
     normalizer_std: np.ndarray
@@ -97,7 +105,19 @@ class FrozenActorEnsemble:
         artifact = Path(path)
         digest = hashlib.sha256(artifact.read_bytes()).hexdigest()
         with np.load(artifact, allow_pickle=False) as saved:
+            model_version = str(saved["model_version"].item())
+            default_policy_names = {
+                LEGACY_MODEL_VERSION: "v4 residual",
+                MODEL_VERSION: "v8 no-calendar",
+            }
             bundle = cls(
+                model_version=model_version,
+                policy_name=(
+                    str(saved["policy_name"].item())
+                    if "policy_name" in saved.files
+                    else default_policy_names.get(model_version, model_version)
+                ),
+                train_cutoff=str(saved["train_cutoff"].item()),
                 feature_names=tuple(saved["feature_names"].astype(str).tolist()),
                 normalizer_mean=saved["normalizer_mean"].astype(np.float64),
                 normalizer_std=saved["normalizer_std"].astype(np.float64),
@@ -129,7 +149,17 @@ class FrozenActorEnsemble:
             actual = getattr(self, name).shape
             if actual != shape:
                 raise ValueError(f"{name} has shape {actual}; expected {shape}")
-        if tuple(self.feature_names) != tuple(FEATURE_NAMES):
+        if not self.model_version or not self.policy_name or not self.train_cutoff:
+            raise ValueError("Actor bundle metadata is incomplete")
+        unknown = set(self.feature_names).difference(FEATURE_NAMES)
+        if unknown:
+            raise ValueError(f"Actor bundle has unsupported features: {sorted(unknown)}")
+        expected_order = tuple(
+            name for name in FEATURE_NAMES if name in set(self.feature_names)
+        )
+        if len(set(self.feature_names)) != features:
+            raise ValueError("Actor feature names must be unique")
+        if tuple(self.feature_names) != expected_order:
             raise ValueError("Actor feature order does not match the live pipeline")
         if np.any(self.normalizer_std <= 0):
             raise ValueError("Normalizer standard deviations must be positive")
@@ -206,7 +236,7 @@ def build_feature_frame(
     tnx: pd.DataFrame,
     irx: pd.DataFrame,
 ) -> pd.DataFrame:
-    """Build the 24 raw actor features from provider frames.
+    """Build every raw feature supported by the frozen actor pipeline.
 
     The yield scaling intentionally preserves the frozen training convention.
     Changing it would make deployed observations incompatible with the actor.
@@ -367,6 +397,7 @@ def replay_frozen_policy(
     )
     result.attrs["actions"] = action_rows
     result.attrs["actor_exposure"] = exposure_rows
+    result.attrs["model_version"] = ensemble.model_version
     return result
 
 
@@ -425,10 +456,11 @@ def build_signal_payload(
     learned = float(latest["learned_mean"])
     baseline = float(latest["vt10_exposure"])
     multiplier = float(latest["tilt_multiplier"])
+    display_multiplier = round(multiplier, 2)
     stance = stance_for_exposure(learned)
-    if multiplier < 0.9:
+    if display_multiplier < 0.9:
         tilt_read = "trimmed the volatility anchor"
-    elif multiplier > 1.1:
+    elif display_multiplier >= 1.1:
         tilt_read = "added risk above the volatility anchor"
     else:
         tilt_read = "kept the volatility anchor nearly unchanged"
@@ -445,8 +477,10 @@ def build_signal_payload(
             "instrument": "QQQ",
         },
         "model": {
-            "version": MODEL_VERSION,
-            "trainCutoff": TRAIN_CUTOFF,
+            "version": ensemble.model_version,
+            "displayName": ensemble.policy_name,
+            "trainCutoff": ensemble.train_cutoff,
+            "featureCount": len(ensemble.feature_names),
             "ensembleSize": ensemble.ensemble_size,
             "artifactSha256": ensemble.artifact_sha256,
             "decisionTiming": "After close for the next close-to-close session",
@@ -477,7 +511,7 @@ def build_signal_payload(
             ),
             "explanation": (
                 f"Trailing volatility set the VT10 anchor at {baseline:.2f}x. "
-                f"The frozen ten-seed ensemble {tilt_read} with a "
+                f"The current ten-seed ensemble {tilt_read} with a "
                 f"{multiplier:.2f}x residual, producing {learned:.2f}x."
             ),
         },
@@ -503,7 +537,10 @@ def build_signal_payload(
         "limitations": [
             "Research output, not personalized investment advice or an execution order.",
             "Yahoo data is delayed and may be revised; the signal is not intraday.",
-            "The learned ensemble was frozen after training through 2023-12-31.",
+            (
+                "The learned ensemble was frozen after training through "
+                f"{ensemble.train_cutoff}."
+            ),
             "The displayed composite is a post-hoc research candidate, not a validated deployment policy.",
         ],
     }
@@ -537,6 +574,7 @@ def append_forward_log(payload: Mapping, output: str | Path) -> bool:
     row = {
         "date": payload["asOf"],
         "generated_at": payload["generatedAt"],
+        "model_version": payload["model"]["version"],
         "source": payload["source"]["provider"],
         "qqq_close": market["price"],
         "qqq_close_return": market["dailyChange"],
@@ -557,7 +595,11 @@ def append_forward_log(payload: Mapping, output: str | Path) -> bool:
     }
     write_header = not path.exists() or path.stat().st_size == 0
     with path.open("a", newline="", encoding="utf-8") as handle:
-        writer = csv.DictWriter(handle, fieldnames=FORWARD_LOG_FIELDS)
+        writer = csv.DictWriter(
+            handle,
+            fieldnames=FORWARD_LOG_FIELDS,
+            lineterminator="\n",
+        )
         if write_header:
             writer.writeheader()
         writer.writerow(row)
@@ -572,10 +614,20 @@ def validate_forward_log(replay: pd.DataFrame, input_path: str | Path) -> None:
     actor_exposure = replay.attrs.get("actor_exposure")
     if actor_exposure is None:
         raise ValueError("Replay is missing per-actor exposure state")
+    model_version = replay.attrs.get("model_version")
+    if not model_version:
+        raise ValueError("Replay is missing its model version")
 
     with path.open(newline="", encoding="utf-8") as handle:
         rows = list(csv.DictReader(handle))
     for row in rows:
+        logged_model = row.get("model_version", "")
+        if not logged_model:
+            raise ValueError(
+                f"Forward log date {row.get('date', 'unknown')} has no model version"
+            )
+        if logged_model != model_version:
+            continue
         date = pd.Timestamp(row["date"])
         if date not in replay.index:
             raise ValueError(f"Forward log date {date.date()} is absent from replay")

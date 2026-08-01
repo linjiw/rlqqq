@@ -12,7 +12,8 @@ Three demo artifacts, in order of impact:
    drawdown compression live.
 2. **"What would it do today?" card**: daily decision snapshot (see
    `results/live_decision_snapshot.md` 2026-07-31: vol 24%, vt10 0.42,
-   agent 0.35). Regenerate with one script call; ideal live-demo moment.
+   legacy v4 agent 0.40). The public card now runs the current v8 no-calendar
+   reference and identifies its artifact version.
 3. **One-slide honest scorecard** (from RESULTS.md): three eras × four
    policies (B&H / DCA / VT / agent), with the two significant results
    starred (era-holdout ΔSharpe vs B&H; none in-era) and the frontier
@@ -25,10 +26,10 @@ scorecard + what didn't work (scaling, LLM-era hype) (3) → roadmap (2).
 ## Part 2 — Validation protocol going forward
 
 - **Forward paper-trading test (the only remaining unbiased data source):**
-  freeze `ppo_v4_resid` ensemble + vt10 baseline TODAY; log its daily
-  target exposure vs realized QQQ; review quarterly. Zero look-ahead by
-  construction; ~2 years to a meaningful sample. Cheap and decisive.
-- **Monthly data refresh + decision log**: append-only
+  freeze the `ppo_v8_nocal` ensemble + vt10 baseline; log its daily target
+  exposure vs realized QQQ and review quarterly. The 2026 selection window
+  is already spent, so only decisions after the v8 release are prospective.
+- **Weekday delayed-data refresh + decision log**: append-only
   `results/forward_log.csv` (date, vol, baseline w, agent w, realized ret).
 - **No more touching**: 2026 holdout spent; NDX era holdout now used twice
   (core + tilt-transfer) — any further use requires multiplicity accounting;
@@ -36,9 +37,9 @@ scorecard + what didn't work (scaling, LLM-era hype) (3) → roadmap (2).
 
 ## Part 3 — Ranked research directions (each with kill criterion)
 
-1. **Calendar-feature ablation** (retrain v4 minus dow/month). Distillation
-   flagged `month` as a decision driver — likely spurious. KILL: if Sharpe
-   drops >0.02, calendar stays; else drop features permanently. (1 run.)
+1. **Calendar-feature ablation — completed.** Removing dow/month improved
+   Sharpe, MaxDD, Calmar, and turnover. `ppo_v8_nocal` is now the reference;
+   the 24-feature v4 artifact remains for historical replay and parity tests.
 2. **Volume-panic gate formalization**: the distilled COVID behavior
    (don't add when vol_ratio spikes) suggests a 27-line rule:
    vt10 × (1.15 if vol>12% & price<MA50 & vol_ratio<1.25 else 1.0 ...).
