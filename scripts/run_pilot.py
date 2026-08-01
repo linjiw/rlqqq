@@ -48,6 +48,7 @@ def one_run(args):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--seeds", type=int, default=10)
+    ap.add_argument("--seed_start", type=int, default=0)
     ap.add_argument("--timesteps", type=int, default=150_000)
     ap.add_argument("--symbol", default="SPY")
     ap.add_argument("--config", default="ppo_v1")
@@ -58,7 +59,7 @@ def main():
     jobs = [
         (f, s, args.timesteps, args.symbol, args.config)
         for f in range(args.folds)
-        for s in range(args.seeds)
+        for s in range(args.seed_start, args.seed_start + args.seeds)
     ]
     print(f"{len(jobs)} runs ({args.folds} folds x {args.seeds} seeds), "
           f"{args.workers} workers, {args.timesteps} steps each")

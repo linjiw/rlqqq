@@ -1,0 +1,83 @@
+80 runs (8 folds x 10 seeds), 7 workers, 150000 steps each
+[  1/80] F1 s16: val_sh= 0.23 test_sh= 0.57 cagr= 0.088 exp=0.75 to= 49.2 |  1.5m elapsed, ~115.0m left
+[  2/80] F1 s13: val_sh= 0.11 test_sh= 0.71 cagr= 0.124 exp=0.74 to= 37.5 |  1.5m elapsed, ~56.8m left
+[  3/80] F1 s15: val_sh= 0.03 test_sh= 0.52 cagr= 0.074 exp=0.61 to= 70.7 |  1.5m elapsed, ~37.4m left
+[  4/80] F1 s14: val_sh= 0.41 test_sh= 0.82 cagr= 0.155 exp=0.81 to= 35.4 |  1.5m elapsed, ~27.8m left
+[  5/80] F1 s11: val_sh= 0.42 test_sh= 0.37 cagr= 0.042 exp=0.33 to= 60.8 |  1.5m elapsed, ~22.2m left
+[  6/80] F1 s10: val_sh= 0.47 test_sh= 1.02 cagr= 0.179 exp=0.58 to= 63.4 |  1.5m elapsed, ~18.4m left
+[  7/80] F1 s12: val_sh= 0.59 test_sh= 0.45 cagr= 0.066 exp=0.64 to= 46.1 |  1.5m elapsed, ~15.6m left
+[  8/80] F2 s11: val_sh= 0.87 test_sh= 0.85 cagr= 0.066 exp=0.50 to= 36.9 |  2.9m elapsed, ~26.4m left
+[  9/80] F2 s10: val_sh= 1.09 test_sh= 1.25 cagr= 0.146 exp=0.62 to= 36.9 |  2.9m elapsed, ~23.2m left
+[ 10/80] F1 s17: val_sh= 0.64 test_sh= 0.92 cagr= 0.176 exp=0.79 to= 42.4 |  3.0m elapsed, ~20.8m left
+[ 11/80] F2 s12: val_sh= 0.47 test_sh= 1.58 cagr= 0.175 exp=0.56 to= 54.8 |  3.0m elapsed, ~18.7m left
+[ 12/80] F2 s13: val_sh= 0.53 test_sh= 1.02 cagr= 0.099 exp=0.54 to= 61.4 |  3.0m elapsed, ~17.0m left
+[ 13/80] F1 s18: val_sh= 0.62 test_sh= 0.33 cagr= 0.038 exp=0.60 to= 58.4 |  3.0m elapsed, ~15.5m left
+[ 14/80] F1 s19: val_sh= 0.06 test_sh= 0.73 cagr= 0.107 exp=0.41 to= 64.4 |  3.0m elapsed, ~14.2m left
+[ 15/80] F2 s17: val_sh= 1.24 test_sh= 1.00 cagr= 0.093 exp=0.62 to= 45.6 |  4.6m elapsed, ~19.7m left
+[ 16/80] F2 s14: val_sh= 0.67 test_sh= 0.97 cagr= 0.110 exp=0.74 to= 55.4 |  4.6m elapsed, ~18.4m left
+[ 17/80] F2 s15: val_sh= 0.64 test_sh= 0.81 cagr= 0.081 exp=0.59 to= 73.8 |  4.6m elapsed, ~17.1m left
+[ 18/80] F2 s16: val_sh= 0.27 test_sh= 0.43 cagr= 0.027 exp=0.30 to= 73.0 |  4.6m elapsed, ~15.9m left
+[ 19/80] F2 s19: val_sh= 0.97 test_sh= 1.31 cagr= 0.099 exp=0.47 to= 22.4 |  4.6m elapsed, ~14.9m left
+[ 20/80] F2 s18: val_sh= 0.79 test_sh= 1.34 cagr= 0.159 exp=0.63 to= 63.3 |  4.7m elapsed, ~14.1m left
+[ 21/80] F3 s10: val_sh= 0.76 test_sh= 0.16 cagr= 0.009 exp=0.41 to= 64.4 |  4.7m elapsed, ~13.3m left
+[ 22/80] F3 s11: val_sh= 0.95 test_sh= 0.76 cagr= 0.103 exp=0.89 to= 41.4 |  6.2m elapsed, ~16.3m left
+[ 23/80] F3 s14: val_sh=-0.04 test_sh= 0.09 cagr= 0.002 exp=0.00 to=  0.5 |  6.2m elapsed, ~15.4m left
+[ 24/80] F3 s12: val_sh= 0.97 test_sh= 0.97 cagr= 0.059 exp=0.20 to= 38.2 |  6.2m elapsed, ~14.5m left
+[ 25/80] F3 s13: val_sh= 0.76 test_sh= 0.70 cagr= 0.070 exp=0.34 to= 69.7 |  6.2m elapsed, ~13.7m left
+[ 26/80] F3 s15: val_sh= 0.60 test_sh= 0.48 cagr= 0.022 exp=0.11 to= 37.2 |  6.3m elapsed, ~13.0m left
+[ 27/80] F3 s16: val_sh= 0.99 test_sh= 0.58 cagr= 0.062 exp=0.60 to= 56.6 |  6.3m elapsed, ~12.4m left
+[ 28/80] F3 s17: val_sh= 1.16 test_sh= 0.49 cagr= 0.062 exp=0.79 to= 67.1 |  6.3m elapsed, ~11.7m left
+[ 29/80] F3 s18: val_sh= 0.80 test_sh= 0.54 cagr= 0.053 exp=0.55 to= 83.0 |  7.6m elapsed, ~13.4m left
+[ 30/80] F4 s10: val_sh= 1.55 test_sh= 0.00 cagr=-0.000 exp=0.07 to= 19.4 |  7.7m elapsed, ~12.9m left
+[ 31/80] F3 s19: val_sh= 1.18 test_sh= 0.91 cagr= 0.087 exp=0.56 to= 46.4 |  7.8m elapsed, ~12.3m left
+[ 32/80] F4 s11: val_sh= 0.50 test_sh= 1.95 cagr= 0.108 exp=0.37 to= 50.7 |  7.8m elapsed, ~11.6m left
+[ 33/80] F4 s12: val_sh= 0.86 test_sh= 2.29 cagr= 0.291 exp=0.94 to= 12.1 |  7.9m elapsed, ~11.2m left
+[ 34/80] F4 s13: val_sh= 0.54 test_sh= 1.85 cagr= 0.192 exp=0.67 to= 75.1 |  7.9m elapsed, ~10.7m left
+[ 35/80] F4 s14: val_sh= 0.88 test_sh= 1.63 cagr= 0.186 exp=0.81 to= 41.5 |  7.9m elapsed, ~10.1m left
+[ 36/80] F4 s15: val_sh=-0.13 test_sh= 1.23 cagr= 0.024 exp=0.05 to= 10.5 |  9.2m elapsed, ~11.2m left
+[ 37/80] F4 s16: val_sh= 0.63 test_sh= 2.07 cagr= 0.150 exp=0.51 to=  6.6 |  9.3m elapsed, ~10.8m left
+[ 38/80] F4 s17: val_sh= 0.59 test_sh= 1.71 cagr= 0.192 exp=0.77 to= 43.0 |  9.3m elapsed, ~10.2m left
+[ 39/80] F4 s18: val_sh= 0.32 test_sh= 0.86 cagr= 0.024 exp=0.07 to= 30.4 |  9.3m elapsed, ~ 9.8m left
+[ 40/80] F4 s19: val_sh= 0.71 test_sh= 2.11 cagr= 0.265 exp=0.93 to= 13.7 |  9.4m elapsed, ~ 9.4m left
+[ 41/80] F5 s10: val_sh= 1.33 test_sh= 0.33 cagr= 0.041 exp=0.46 to= 54.1 |  9.4m elapsed, ~ 8.9m left
+[ 42/80] F5 s11: val_sh= 0.94 test_sh= 0.55 cagr= 0.053 exp=0.12 to= 33.1 |  9.4m elapsed, ~ 8.5m left
+[ 43/80] F5 s12: val_sh= 1.52 test_sh= 1.47 cagr= 0.225 exp=0.69 to= 63.5 | 10.8m elapsed, ~ 9.3m left
+[ 44/80] F5 s13: val_sh= 1.96 test_sh= 1.07 cagr= 0.167 exp=0.68 to= 63.5 | 10.9m elapsed, ~ 8.9m left
+[ 45/80] F5 s14: val_sh= 1.34 test_sh= 1.68 cagr= 0.280 exp=0.49 to= 99.2 | 10.9m elapsed, ~ 8.5m left
+[ 46/80] F5 s16: val_sh= 2.17 test_sh= 1.03 cagr= 0.181 exp=0.78 to= 48.8 | 11.0m elapsed, ~ 8.1m left
+[ 47/80] F5 s15: val_sh= 0.78 test_sh= 0.22 cagr= 0.019 exp=0.21 to= 26.0 | 11.0m elapsed, ~ 7.7m left
+[ 48/80] F5 s18: val_sh= 1.80 test_sh= 1.08 cagr= 0.137 exp=0.48 to= 64.6 | 11.1m elapsed, ~ 7.4m left
+[ 49/80] F5 s17: val_sh= 1.96 test_sh= 0.83 cagr= 0.104 exp=0.41 to= 50.1 | 11.1m elapsed, ~ 7.0m left
+[ 50/80] F5 s19: val_sh= 1.29 test_sh= 1.11 cagr= 0.121 exp=0.34 to= 75.6 | 12.4m elapsed, ~ 7.4m left
+[ 51/80] F6 s10: val_sh= 1.17 test_sh= 1.60 cagr= 0.318 exp=0.65 to= 55.9 | 12.4m elapsed, ~ 7.1m left
+[ 52/80] F6 s11: val_sh= 1.44 test_sh=-0.12 cagr=-0.031 exp=0.12 to= 29.8 | 12.5m elapsed, ~ 6.7m left
+[ 53/80] F6 s12: val_sh= 0.95 test_sh= 1.39 cagr= 0.161 exp=0.35 to= 33.5 | 12.5m elapsed, ~ 6.4m left
+[ 54/80] F6 s13: val_sh= 1.09 test_sh= 1.90 cagr= 0.436 exp=0.63 to= 53.1 | 12.5m elapsed, ~ 6.0m left
+[ 55/80] F6 s14: val_sh= 0.60 test_sh= 1.36 cagr= 0.185 exp=0.35 to= 48.6 | 12.6m elapsed, ~ 5.7m left
+[ 56/80] F6 s15: val_sh= 0.78 test_sh= 1.61 cagr= 0.276 exp=0.72 to= 31.4 | 12.6m elapsed, ~ 5.4m left
+[ 57/80] F6 s17: val_sh= 1.27 test_sh= 0.88 cagr= 0.176 exp=0.75 to= 38.7 | 13.9m elapsed, ~ 5.6m left
+[ 58/80] F6 s16: val_sh= 0.94 test_sh= 0.57 cagr= 0.064 exp=0.36 to= 48.9 | 13.9m elapsed, ~ 5.3m left
+[ 59/80] F6 s19: val_sh= 1.03 test_sh= 0.17 cagr= 0.014 exp=0.23 to= 24.6 | 14.0m elapsed, ~ 5.0m left
+[ 60/80] F6 s18: val_sh= 1.00 test_sh= 0.82 cagr= 0.069 exp=0.08 to= 24.1 | 14.0m elapsed, ~ 4.7m left
+[ 61/80] F7 s10: val_sh= 1.02 test_sh= 0.67 cagr= 0.091 exp=0.24 to= 75.5 | 14.1m elapsed, ~ 4.4m left
+[ 62/80] F7 s11: val_sh= 1.58 test_sh= 1.26 cagr= 0.261 exp=0.63 to= 69.2 | 14.2m elapsed, ~ 4.1m left
+[ 63/80] F7 s12: val_sh= 0.38 test_sh= 0.43 cagr= 0.067 exp=0.45 to= 44.4 | 14.2m elapsed, ~ 3.8m left
+[ 64/80] F7 s13: val_sh= 1.38 test_sh= 0.74 cagr= 0.127 exp=0.59 to= 39.4 | 15.4m elapsed, ~ 3.8m left
+[ 65/80] F7 s15: val_sh= 1.05 test_sh= 0.60 cagr= 0.104 exp=0.66 to= 60.2 | 15.4m elapsed, ~ 3.6m left
+[ 66/80] F7 s14: val_sh= 0.67 test_sh= 0.81 cagr= 0.147 exp=0.59 to= 60.2 | 15.4m elapsed, ~ 3.3m left
+[ 67/80] F7 s16: val_sh= 0.28 test_sh= 0.27 cagr= 0.033 exp=0.33 to= 62.9 | 15.5m elapsed, ~ 3.0m left
+[ 68/80] F7 s17: val_sh= 1.05 test_sh= 1.26 cagr= 0.271 exp=0.67 to= 45.4 | 15.5m elapsed, ~ 2.7m left
+[ 69/80] F7 s18: val_sh= 1.09 test_sh= 0.51 cagr= 0.072 exp=0.48 to= 60.5 | 15.7m elapsed, ~ 2.5m left
+[ 70/80] F7 s19: val_sh= 1.73 test_sh= 0.29 cagr= 0.041 exp=0.48 to= 38.3 | 15.7m elapsed, ~ 2.2m left
+[ 71/80] F8 s10: val_sh= 0.34 test_sh= 1.22 cagr= 0.185 exp=0.45 to= 59.5 | 16.8m elapsed, ~ 2.1m left
+[ 72/80] F8 s11: val_sh= 0.49 test_sh= 1.09 cagr= 0.203 exp=0.77 to= 36.3 | 16.8m elapsed, ~ 1.9m left
+[ 73/80] F8 s12: val_sh= 0.44 test_sh= 1.13 cagr= 0.236 exp=0.96 to= 10.5 | 16.9m elapsed, ~ 1.6m left
+[ 74/80] F8 s13: val_sh= 0.63 test_sh= 0.96 cagr= 0.174 exp=0.81 to= 42.6 | 16.9m elapsed, ~ 1.4m left
+[ 75/80] F8 s14: val_sh= 1.01 test_sh= 0.46 cagr= 0.074 exp=0.72 to= 45.0 | 16.9m elapsed, ~ 1.1m left
+[ 76/80] F8 s15: val_sh= 1.14 test_sh= 0.64 cagr= 0.108 exp=0.89 to= 32.6 | 17.0m elapsed, ~ 0.9m left
+[ 77/80] F8 s16: val_sh= 0.18 test_sh= 1.06 cagr= 0.175 exp=0.56 to= 55.2 | 17.1m elapsed, ~ 0.7m left
+[ 78/80] F8 s18: val_sh= 0.64 test_sh= 1.19 cagr= 0.164 exp=0.42 to= 61.0 | 17.9m elapsed, ~ 0.5m left
+[ 79/80] F8 s17: val_sh= 0.60 test_sh= 0.75 cagr= 0.135 exp=0.96 to= 12.6 | 17.9m elapsed, ~ 0.2m left
+[ 80/80] F8 s19: val_sh= 1.70 test_sh= 0.91 cagr= 0.164 exp=0.74 to= 75.2 | 17.9m elapsed, ~ 0.0m left
+
+All done in 17.9 min. Registry: results/registry.jsonl
