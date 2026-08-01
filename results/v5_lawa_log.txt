@@ -1,1 +1,8 @@
 80 runs (8 folds x 10 seeds), 7 workers, 150000 steps each
+[  1/80] F1 s2: val_sh= 0.08 test_sh= 0.73 cagr= 0.063 exp=0.36 to= 19.6 |  1.4m elapsed, ~107.1m left
+[  2/80] F1 s4: val_sh= 0.59 test_sh= 0.99 cagr= 0.125 exp=0.59 to= 23.7 |  1.4m elapsed, ~52.9m left
+[  3/80] F1 s5: val_sh= 0.21 test_sh= 0.96 cagr= 0.116 exp=0.64 to= 18.7 |  1.4m elapsed, ~34.8m left
+[  4/80] F1 s1: val_sh= 0.54 test_sh= 1.04 cagr= 0.140 exp=0.72 to= 16.5 |  1.4m elapsed, ~26.0m left
+[  5/80] F1 s6: val_sh= 0.28 test_sh= 0.50 cagr= 0.047 exp=0.46 to= 21.5 |  1.4m elapsed, ~20.7m left
+[  6/80] F1 s3: val_sh= 0.48 test_sh= 0.67 cagr= 0.084 exp=0.61 to= 30.3 |  1.4m elapsed, ~17.4m left
+[  7/80] F1 s0: val_sh= 0.70 test_sh= 0.74 cagr= 0.093 exp=0.61 to= 12.6 |  1.4m elapsed, ~14.8m left
