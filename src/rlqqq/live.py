@@ -731,10 +731,14 @@ def build_signal_payload(
             "Research output, not personalized investment advice or an execution order.",
             "Yahoo data is delayed and may be revised; the signal is not intraday.",
             (
-                "The learned ensemble was frozen after training through "
-                f"{ensemble.train_cutoff}."
+                f"The model uses a {ensemble.train_cutoff} decision-date cutoff; "
+                "its final training feature row is 2023-12-29 and the associated "
+                "reward realizes on 2024-01-02."
             ),
-            "The displayed composite is a post-hoc research candidate, not a validated deployment policy.",
+            (
+                "The composite is retained only for parity and research audit; "
+                "the deployed target is the v8 core exposure."
+            ),
         ],
     }
     return payload

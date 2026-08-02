@@ -688,7 +688,7 @@
   "limitations": [
     "Research output, not personalized investment advice or an execution order.",
     "Yahoo data is delayed and may be revised; the signal is not intraday.",
-    "The learned ensemble was frozen after training through 2023-12-31.",
-    "The displayed composite is a post-hoc research candidate, not a validated deployment policy."
+    "The model uses a 2023-12-31 decision-date cutoff; its final training feature row is 2023-12-29 and the associated reward realizes on 2024-01-02.",
+    "The composite is retained only for parity and research audit; the deployed target is the v8 core exposure."
   ]
 }

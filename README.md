@@ -7,12 +7,11 @@ after realistic costs, with statistically honest evaluation.
 
 ## Interactive dashboard
 
-The [RLQQQ policy replay](https://linjiw.github.io/rlqqq/) animates the
-2010-2025 walk-forward decisions, compares normalized wealth with QQQ and
-SPY, exposes the volatility base and learned residual tilt at every date, and
-publishes the v8 no-calendar reference's latest delayed-close output. The
-animated historical series remains the audited v4 replay and is labeled as
-such. The dashboard also exports the replay as WebM video or a PNG frame.
+The [RLQQQ policy replay](https://linjiw.github.io/rlqqq/) publishes only the
+selected v8 no-calendar core model as its current delayed-close target. A
+checked-in benchmark compares v8 and v4 under identical accounting and keeps
+the old v4/composite animation clearly separated as an archived research
+replay. The dashboard also exports that archive as WebM video or a PNG frame.
 
 Rebuild its checked-in data bundle with:
 
@@ -47,6 +46,21 @@ parity, or freshness failure withholds the browser result instead of falling
 back to the precomputed answer. An `asOf` close produces an unscored target
 for the next close-to-close session; it is not part of performance through
 that same close.
+
+Reproduce the deployment comparison after generating both configurations'
+eight-fold, ten-seed walk-forward series with:
+
+```bash
+.venv/bin/python scripts/evaluate_model_benchmark.py
+```
+
+The evaluator reports the trained cores, post-hoc leverage overlays, simple
+VT10/VT20 rules, QQQ, frozen 2026 replay, and a conservative one-close-lag
+sensitivity. Its selection rule limits deployment eligibility to trained core
+models; v8 wins the near-tie because it removes two questionable calendar
+features, trades less, and is also ahead under the historical lagged timing
+sensitivity. The short 2026 lag sensitivity reverses the core ranking, so the
+composite overlays and 2026 record are never treated as selection evidence.
 
 See [docs/live_deployment.md](docs/live_deployment.md) for the release
 contract, scheduled generation, fail-closed parity checks, and signal timing.
@@ -99,10 +113,14 @@ models/live/             # deployable actor weights + release manifest
 
 ```bash
 /usr/bin/python3.12 -m venv .venv
-.venv/bin/pip install pandas numpy pyarrow requests yfinance matplotlib
+.venv/bin/pip install --requirement requirements-research.txt
 .venv/bin/python scripts/download_data.py
 .venv/bin/python scripts/prepare_dataset.py
 ```
+
+The critical research stack is pinned for future reruns. Historical artifacts
+created before this lock remain recipe-level results: hardware and the earlier
+unrecorded dependency state can still prevent byte-identical PPO weights.
 
 ## Data snapshot (2026-07-31)
 

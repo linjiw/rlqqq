@@ -44,8 +44,61 @@
     spy: COLORS.spy,
   };
 
+  const BENCHMARK_POLICIES = [
+    {
+      key: "v8Core",
+      name: "v8 core",
+      description: "Trained no-calendar core",
+      status: "Deployed winner",
+      statusClass: "winner",
+    },
+    {
+      key: "v4Core",
+      name: "v4 core",
+      description: "Trained calendar-feature core",
+      status: "Eligible · archived",
+      statusClass: "eligible",
+    },
+    {
+      key: "vt10",
+      name: "VT10",
+      description: "Non-learning risk anchor",
+      status: "Rule reference",
+      statusClass: "reference",
+    },
+    {
+      key: "vt20",
+      name: "VT20",
+      description: "Non-learning leveraged risk anchor",
+      status: "Risk-matched rule",
+      statusClass: "reference",
+    },
+    {
+      key: "qqq",
+      name: "QQQ",
+      description: "Buy-and-hold benchmark",
+      status: "Market reference",
+      statusClass: "reference",
+    },
+    {
+      key: "v8Composite",
+      name: "v8 composite",
+      description: "Post-hoc VT20 overlay · dashboard convention",
+      status: "Ineligible overlay",
+      statusClass: "ineligible",
+    },
+    {
+      key: "v4Composite",
+      name: "v4 composite",
+      description: "Post-hoc VT20 overlay · archived dashboard convention",
+      status: "Ineligible overlay",
+      statusClass: "ineligible",
+    },
+  ];
+
   const state = {
     data: null,
+    benchmarkData: null,
     liveData: null,
     liveVerification: null,
     dates: [],
@@ -106,7 +159,7 @@
   async function init() {
     cacheElements();
     initializeIcons();
-    loadLiveSignal();
+    loadVerifiedDeployment();
 
     try {
       const response = await fetch(assetUrl("policy-data.json"));
@@ -129,10 +182,38 @@
     }
   }
 
+  async function loadVerifiedDeployment() {
+    const benchmarkVerified = await loadModelBenchmark();
+    if (!benchmarkVerified) {
+      showLiveError(
+        new Error("The checked benchmark did not verify the deployed model winner"),
+      );
+      return;
+    }
+    await loadLiveSignal();
+  }
+
   function cacheElements() {
     const ids = [
       "sample-range",
       "sample-days",
+      "benchmark",
+      "benchmark-status",
+      "benchmark-evaluated",
+      "benchmark-winner",
+      "benchmark-rule",
+      "benchmark-winner-cagr",
+      "benchmark-winner-sharpe",
+      "benchmark-winner-drawdown",
+      "benchmark-winner-calmar",
+      "benchmark-ineligible-copy",
+      "benchmark-capital-reason",
+      "benchmark-lag-verdict",
+      "benchmark-historical-period",
+      "benchmark-forward-period",
+      "benchmark-historical-body",
+      "benchmark-forward-body",
+      "benchmark-note",
       "live-status",
       "live-as-of",
       "live-grid",
@@ -156,7 +237,6 @@
       "live-vt10",
       "live-tilt",
       "live-seed-range",
-      "live-composite",
       "live-explanation",
       "live-price",
       "live-daily-change",
@@ -240,6 +320,278 @@
     }
   }
 
+  async function loadModelBenchmark() {
+    try {
+      const response = await fetch(assetUrl("model-benchmark.json"), {
+        cache: "no-store",
+      });
+      if (!response.ok) {
+        throw new Error(`Model benchmark request failed with status ${response.status}`);
+      }
+      const payload = await response.json();
+      validateModelBenchmark(payload);
+      state.benchmarkData = payload;
+      renderModelBenchmark();
+      return true;
+    } catch (error) {
+      showModelBenchmarkError(error);
+      return false;
+    }
+  }
+
+  function validateModelBenchmark(payload) {
+    const selection = payload?.deploymentSelection;
+    const historical = payload?.historicalWalkForward;
+    const forward = payload?.frozen2026;
+    if (
+      payload?.schemaVersion !== 1 ||
+      payload.historicalStatus !== "complete" ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(payload.evaluatedOn || "") ||
+      !/^[a-f0-9]{7,40}$/.test(payload.sourceRevision || "") ||
+      !Array.isArray(payload.limitations) ||
+      !selection ||
+      selection.winner !== "v8Core" ||
+      selection.status !== "Selected for browser research deployment" ||
+      selection.capitalDeploymentQualified !== false ||
+      !selection.capitalDeploymentReason ||
+      !selection.deploymentScope ||
+      !selection.eligibleCandidates?.includes("v4Core") ||
+      !selection.eligibleCandidates?.includes("v8Core") ||
+      !selection.ineligibleResearchOverlays?.includes("v4Composite") ||
+      !selection.ineligibleResearchOverlays?.includes("v8Composite") ||
+      !selection.modelVersion ||
+      !selection.rule ||
+      !historical?.metrics ||
+      !historical.oneCloseLagSensitivity ||
+      !historical.period ||
+      !Number.isInteger(historical.period.days) ||
+      !Number.isInteger(historical.period.folds) ||
+      !Number.isInteger(historical.period.seedsPerFold) ||
+      !forward?.metrics ||
+      !forward.oneCloseLagSensitivity ||
+      !forward.period ||
+      !Number.isInteger(forward.period.days) ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(forward.latestUnscoredSignal?.v8?.asOf || "") ||
+      forward.period.latestSignalScored !== false
+    ) {
+      throw new Error("Model benchmark schema or deployment selection is invalid");
+    }
+
+    const metricKeys = [
+      "cagr",
+      "sharpe",
+      "maximumDrawdown",
+      "calmar",
+      "averageExposure",
+      "annualTurnover",
+    ];
+    [
+      historical.metrics,
+      historical.oneCloseLagSensitivity,
+      forward.oneCloseLagSensitivity,
+    ].forEach((metrics) => {
+      BENCHMARK_POLICIES.forEach(({ key }) => {
+        if (!metrics[key] || !metricKeys.every((metric) => Number.isFinite(metrics[key][metric]))) {
+          throw new Error(`Model benchmark metrics are incomplete for ${key}`);
+        }
+      });
+    });
+    BENCHMARK_POLICIES.forEach(({ key }) => {
+      const metrics = forward.metrics[key];
+      if (
+        !metrics ||
+        !["totalReturn", "julyReturn", "sharpe", "maximumDrawdown", "averageExposure"]
+          .every((metric) => Number.isFinite(metrics[metric]))
+      ) {
+        throw new Error(`Frozen 2026 benchmark metrics are incomplete for ${key}`);
+      }
+    });
+    if (!metricKeys.every((metric) => Number.isFinite(selection.winnerMetrics?.[metric]))) {
+      throw new Error("Deployment winner metrics are incomplete");
+    }
+    if (
+      !Number.isFinite(selection.winnerEvidence?.sameCloseSharpeDeltaVsV4) ||
+      !Number.isFinite(selection.winnerEvidence?.oneCloseLagSharpeDeltaVsVt10)
+    ) {
+      throw new Error("Deployment winner evidence is incomplete");
+    }
+  }
+
+  function renderModelBenchmark() {
+    const payload = state.benchmarkData;
+    const selection = payload.deploymentSelection;
+    const winner = selection.winnerMetrics;
+    const historicalPeriod = payload.historicalWalkForward.period;
+    const forwardPeriod = payload.frozen2026.period;
+    const historicalLag = payload.historicalWalkForward.oneCloseLagSensitivity;
+    const evaluatedDate = new Date(`${payload.evaluatedOn}T00:00:00Z`);
+    const compositeLimitation = payload.limitations.find((item) =>
+      item.startsWith("Composite policies"));
+    const reproducibilityLimitation = payload.limitations.find((item) =>
+      item.startsWith("The recipe rerun"));
+
+    elements.benchmark.setAttribute("aria-busy", "false");
+    elements.benchmarkStatus.className = "benchmark-status is-verified";
+    elements.benchmarkStatus.innerHTML =
+      '<i data-lucide="badge-check" aria-hidden="true"></i>v8 browser winner';
+    elements.benchmarkEvaluated.textContent =
+      `Evaluated ${dateFormatter.format(evaluatedDate)} · ${payload.sourceRevision.slice(0, 8)}`;
+    elements.benchmarkWinner.textContent = "v8 core · browser research";
+    elements.benchmarkRule.textContent = selection.rule;
+    elements.benchmarkWinnerCagr.textContent = formatPercent(winner.cagr, 2);
+    elements.benchmarkWinnerSharpe.textContent = winner.sharpe.toFixed(3);
+    elements.benchmarkWinnerDrawdown.textContent =
+      formatPercent(winner.maximumDrawdown, 2);
+    elements.benchmarkWinnerCalmar.textContent = winner.calmar.toFixed(3);
+    elements.benchmarkIneligibleCopy.textContent =
+      `${compositeLimitation || "Composite policies are post-hoc research overlays."} ` +
+      "The browser therefore deploys the selected v8 core output only.";
+    elements.benchmarkCapitalReason.textContent = selection.capitalDeploymentReason;
+    elements.benchmarkLagVerdict.textContent =
+      `One-close-lag Sharpe: VT10 ${historicalLag.vt10.sharpe.toFixed(3)} > ` +
+      `v8 core ${historicalLag.v8Core.sharpe.toFixed(3)}`;
+    elements.benchmarkHistoricalPeriod.textContent =
+      `${historicalPeriod.days.toLocaleString("en-US")} days · ` +
+      `${historicalPeriod.folds} folds · ${historicalPeriod.seedsPerFold} seeds/fold · ` +
+      `${formatBenchmarkDate(historicalPeriod.decisionStart)}–` +
+      `${formatBenchmarkDate(historicalPeriod.decisionEnd)} decisions · returns through ` +
+      `${formatBenchmarkDate(historicalPeriod.realizedEnd)}`;
+    elements.benchmarkForwardPeriod.textContent =
+      `${forwardPeriod.days.toLocaleString("en-US")} scored days · ` +
+      `${formatBenchmarkDate(forwardPeriod.realizedStart)}–` +
+      `${formatBenchmarkDate(forwardPeriod.realizedEnd)}`;
+    elements.benchmarkNote.textContent =
+      "Sharpe uses the repository's same-close research timing; Lag Sharpe shifts exposure " +
+      "one close later as a conservative sensitivity. The 2026 record is a spent forward " +
+      "sanity check, not an untouched selection set. Composite rows reproduce the archived " +
+      "dashboard's continuous-VT anchor; the fold-local actor-anchor sensitivity remains in " +
+      "the machine-readable report. The short 2026 lag sensitivity reverses the core ranking " +
+      `(v4 ${payload.frozen2026.oneCloseLagSensitivity.v4Core.sharpe.toFixed(3)} vs ` +
+      `v8 ${payload.frozen2026.oneCloseLagSensitivity.v8Core.sharpe.toFixed(3)} Sharpe). ` +
+      `${reproducibilityLimitation || "Fresh rerun and archived headlines differ."} ` +
+      `The ${payload.frozen2026.latestUnscoredSignal.v8.asOf} target is unscored and ` +
+      "excluded until a subsequent close exists.";
+
+    populateBenchmarkTable(
+      elements.benchmarkHistoricalBody,
+      payload.historicalWalkForward.metrics,
+      payload.historicalWalkForward.oneCloseLagSensitivity,
+    );
+    populateForwardBenchmarkTable(
+      elements.benchmarkForwardBody,
+      payload.frozen2026.metrics,
+      payload.frozen2026.oneCloseLagSensitivity,
+    );
+    initializeIcons();
+  }
+
+  function populateForwardBenchmarkTable(body, metrics, lagMetrics) {
+    const fragment = document.createDocumentFragment();
+    BENCHMARK_POLICIES.forEach((policy) => {
+      const values = metrics[policy.key];
+      const row = document.createElement("tr");
+      row.className = `benchmark-row is-${policy.statusClass}`;
+
+      const policyCell = document.createElement("td");
+      const name = document.createElement("strong");
+      const description = document.createElement("small");
+      name.textContent = policy.name;
+      description.textContent = policy.description;
+      policyCell.append(name, description);
+      row.append(policyCell);
+
+      const statusCell = document.createElement("td");
+      const status = document.createElement("span");
+      status.className = `benchmark-eligibility is-${policy.statusClass}`;
+      status.textContent = policy.status;
+      statusCell.append(status);
+      row.append(statusCell);
+
+      [
+        formatPercent(values.totalReturn, 2),
+        formatPercent(values.julyReturn, 2),
+        values.sharpe.toFixed(3),
+        formatPercent(values.maximumDrawdown, 2),
+        lagMetrics[policy.key].sharpe.toFixed(3),
+      ].forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.append(cell);
+      });
+      fragment.append(row);
+    });
+    body.replaceChildren(fragment);
+  }
+
+  function populateBenchmarkTable(body, metrics, lagMetrics) {
+    const fragment = document.createDocumentFragment();
+    BENCHMARK_POLICIES.forEach((policy) => {
+      const values = metrics[policy.key];
+      const row = document.createElement("tr");
+      row.className = `benchmark-row is-${policy.statusClass}`;
+
+      const policyCell = document.createElement("td");
+      const name = document.createElement("strong");
+      const description = document.createElement("small");
+      name.textContent = policy.name;
+      description.textContent = policy.description;
+      policyCell.append(name, description);
+      row.append(policyCell);
+
+      const statusCell = document.createElement("td");
+      const status = document.createElement("span");
+      status.className = `benchmark-eligibility is-${policy.statusClass}`;
+      status.textContent = policy.status;
+      statusCell.append(status);
+      row.append(statusCell);
+
+      [
+        formatPercent(values.cagr, 2),
+        values.sharpe.toFixed(3),
+        lagMetrics[policy.key].sharpe.toFixed(3),
+        formatPercent(values.maximumDrawdown, 2),
+        values.calmar.toFixed(3),
+      ].forEach((value) => {
+        const cell = document.createElement("td");
+        cell.textContent = value;
+        row.append(cell);
+      });
+      fragment.append(row);
+    });
+    body.replaceChildren(fragment);
+  }
+
+  function showModelBenchmarkError(error) {
+    console.error(error);
+    const reason = safeErrorMessage(error);
+    elements.benchmark.setAttribute("aria-busy", "false");
+    elements.benchmarkStatus.className = "benchmark-status is-error";
+    elements.benchmarkStatus.innerHTML =
+      '<i data-lucide="triangle-alert" aria-hidden="true"></i>Benchmark unavailable';
+    elements.benchmarkEvaluated.textContent = "Artifact could not be verified";
+    elements.benchmarkRule.textContent =
+      "The official benchmark could not be loaded; no alternate deployment winner is inferred.";
+    elements.benchmarkCapitalReason.textContent =
+      "Without the checked benchmark artifact, the research signal remains unqualified for capital deployment.";
+    elements.benchmarkLagVerdict.textContent = "Conservative timing evidence unavailable";
+    setBenchmarkErrorRow(elements.benchmarkHistoricalBody, reason);
+    setBenchmarkErrorRow(elements.benchmarkForwardBody, reason);
+    initializeIcons();
+  }
+
+  function setBenchmarkErrorRow(body, reason) {
+    const row = document.createElement("tr");
+    const cell = document.createElement("td");
+    cell.colSpan = 7;
+    cell.textContent = `Benchmark unavailable: ${reason}`;
+    row.append(cell);
+    body.replaceChildren(row);
+  }
+
+  function formatBenchmarkDate(date) {
+    return dateFormatter.format(new Date(`${date}T00:00:00Z`));
+  }
+
   async function loadLiveSignal() {
     try {
       const response = await fetch(assetUrl("live-signal.json"), { cache: "no-store" });
@@ -248,6 +600,12 @@
       }
       const payload = await response.json();
       validateLiveSignal(payload);
+      if (
+        payload.model.version !==
+        state.benchmarkData?.deploymentSelection?.modelVersion
+      ) {
+        throw new Error("Live model does not match the checked benchmark winner");
+      }
       const inferenceModule = await import(assetUrl("browser-inference.mjs").href);
       const result = await inferenceModule.verifyBrowserPolicy({ liveSignal: payload });
       const verifiedSignal = {
@@ -406,12 +764,11 @@
 
     elements.liveLearnedTarget.textContent = `${signal.learnedMean.toFixed(2)}x`;
     elements.livePosture.textContent =
-      `${model.displayName} / ${signal.researchPosture}`;
+      `${model.displayName} deployed core / ${signal.researchPosture}`;
     elements.liveVt10.textContent = `${signal.vt10Exposure.toFixed(2)}x`;
     elements.liveTilt.textContent = `${signal.tiltMultiplier.toFixed(2)}x`;
     elements.liveSeedRange.textContent =
       `${signal.learnedMin.toFixed(2)}-${signal.learnedMax.toFixed(2)}x`;
-    elements.liveComposite.textContent = `${signal.compositeExposure.toFixed(2)}x`;
     const votes = state.liveVerification.voteCounts;
     elements.liveExplanation.textContent =
       `This browser replayed the frozen ten-actor policy. VT10 set a ` +
@@ -420,11 +777,11 @@
       `producing a ${signal.learnedMean.toFixed(2)}x core target.`;
 
     elements.liveGaugeFill.style.width =
-      `${clamp(signal.learnedMean / 1.5, 0, 1) * 100}%`;
+      `${clamp(signal.learnedMean, 0, 1) * 100}%`;
     elements.liveGaugeRange.style.left =
-      `${clamp(signal.learnedMin / 1.5, 0, 1) * 100}%`;
+      `${clamp(signal.learnedMin, 0, 1) * 100}%`;
     elements.liveGaugeRange.style.width =
-      `${clamp((signal.learnedMax - signal.learnedMin) / 1.5, 0, 1) * 100}%`;
+      `${clamp(signal.learnedMax - signal.learnedMin, 0, 1) * 100}%`;
     elements.liveGauge.setAttribute(
       "aria-label",
       `Verified learned exposure ${signal.learnedMean.toFixed(2)} times, ` +
@@ -492,7 +849,6 @@
     elements.liveVt10.textContent = "--";
     elements.liveTilt.textContent = "--";
     elements.liveSeedRange.textContent = "--";
-    elements.liveComposite.textContent = "--";
     elements.liveGaugeFill.style.width = "0%";
     elements.liveGaugeRange.style.left = "0%";
     elements.liveGaugeRange.style.width = "0%";
@@ -580,13 +936,13 @@
     );
     const xAt = (index) =>
       plot.x + (index / Math.max(1, count - 1)) * plot.width;
-    const yAt = (value) => linearScale(value, [0, 1.5], plot);
+    const yAt = (value) => linearScale(value, [0, 1], plot);
 
     clearCanvas(context, width, height);
     drawHorizontalGrid(
       context,
       plot,
-      [0, 0.5, 1, 1.5],
+      [0, 0.5, 1],
       yAt,
       (value) => `${value.toFixed(1)}x`,
     );
