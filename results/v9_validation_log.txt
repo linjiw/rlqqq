@@ -1,0 +1,62 @@
+60 validation runs
+[ 1/60] ppo_v9_rel5_era E1 s4: sh=-0.65 cagr=-0.154
+[ 2/60] ppo_v9_rel5_era E1 s0: sh=-0.70 cagr=-0.140
+[ 3/60] ppo_v9_rel5_era E1 s5: sh=-0.90 cagr=-0.193
+[ 4/60] ppo_v9_rel5_era E1 s6: sh=-0.70 cagr=-0.206
+[ 5/60] ppo_v9_rel5_era E1 s1: sh=-0.56 cagr=-0.108
+[ 6/60] ppo_v9_rel5_era E1 s3: sh=-0.61 cagr=-0.160
+[ 7/60] ppo_v9_rel5_era E1 s2: sh=-0.55 cagr=-0.118
+[ 8/60] ppo_v9_rel5_era E1 s8: sh=-0.65 cagr=-0.144
+[ 9/60] ppo_v9_rel5_era E1 s7: sh=-0.63 cagr=-0.145
+[10/60] ppo_v9_rel5_era E1 s9: sh=-0.61 cagr=-0.134
+[11/60] ppo_v9_rel5_era E2 s1: sh= 0.29 cagr= 0.053
+[12/60] ppo_v9_rel5_era E2 s3: sh= 0.23 cagr= 0.039
+[13/60] ppo_v9_rel5_era E2 s2: sh= 0.40 cagr= 0.083
+[14/60] ppo_v9_rel5_era E2 s0: sh= 0.39 cagr= 0.083
+[15/60] ppo_v9_rel5_era E2 s5: sh= 0.34 cagr= 0.068
+[16/60] ppo_v9_rel5_era E2 s4: sh= 0.40 cagr= 0.082
+[17/60] ppo_v9_rel5_era E2 s6: sh=-0.11 cagr=-0.040
+[18/60] ppo_v9_rel5_era E2 s7: sh= 0.39 cagr= 0.087
+[19/60] ppo_v9_rel5_era E3 s0: sh= 0.35 cagr= 0.080
+[20/60] ppo_v9_rel5_era E2 s8: sh= 0.36 cagr= 0.067
+[21/60] ppo_v9_rel5_era E2 s9: sh= 0.41 cagr= 0.092
+[22/60] ppo_v9_rel5_era E3 s2: sh= 0.31 cagr= 0.067
+[23/60] ppo_v9_rel5_era E3 s1: sh= 0.39 cagr= 0.076
+[24/60] ppo_v9_rel5_era E3 s3: sh= 0.44 cagr= 0.098
+[25/60] ppo_v9_rel5_era E3 s5: sh= 0.36 cagr= 0.083
+[26/60] ppo_v9_rel5_era E3 s6: sh= 0.02 cagr= 0.009
+[27/60] ppo_v9_rel5_era E3 s4: sh= 0.40 cagr= 0.091
+[28/60] ppo_v9_rel5_era E3 s7: sh= 0.33 cagr= 0.076
+[29/60] ppo_v9_rel5_era E3 s8: sh= 0.31 cagr= 0.065
+[30/60] ppo_v9_rel5_era E4 s0: sh= 0.43 cagr= 0.121
+[31/60] ppo_v9_rel5_era E3 s9: sh= 0.30 cagr= 0.065
+[32/60] ppo_v9_rel5_era E4 s2: sh= 0.55 cagr= 0.130
+[33/60] ppo_v9_rel5_era E4 s1: sh= 0.40 cagr= 0.103
+[34/60] ppo_v9_rel5_era E4 s3: sh= 0.29 cagr= 0.089
+[35/60] ppo_v9_rel5_era E4 s4: sh= 0.54 cagr= 0.127
+[36/60] ppo_v9_rel5_era E4 s6: sh= 0.43 cagr= 0.120
+[37/60] ppo_v9_rel5_era E4 s7: sh= 0.22 cagr= 0.072
+[38/60] ppo_v9_rel5_era E4 s5: sh= 0.38 cagr= 0.109
+[39/60] ppo_v9_rel5_era E4 s9: sh= 0.28 cagr= 0.079
+[40/60] ppo_v9_rel5_era E5 s0: sh= 0.37 cagr= 0.069
+[41/60] ppo_v9_rel5_era E4 s8: sh= 0.41 cagr= 0.109
+[42/60] ppo_v9_rel5_era E5 s1: sh= 0.63 cagr= 0.151
+[43/60] ppo_v9_rel5_era E5 s2: sh= 0.97 cagr= 0.211
+[44/60] ppo_v9_rel5_era E5 s3: sh= 0.63 cagr= 0.157
+[45/60] ppo_v9_rel5_era E5 s4: sh= 0.32 cagr= 0.056
+[46/60] ppo_v9_rel5_era E5 s6: sh= 0.52 cagr= 0.115
+[47/60] ppo_v9_rel5_era E5 s7: sh= 0.48 cagr= 0.098
+[48/60] ppo_v9_rel5_era E5 s5: sh= 0.40 cagr= 0.081
+[49/60] ppo_v9_rel5_era E5 s8: sh= 0.39 cagr= 0.074
+[50/60] ppo_v9_rel5_era E5 s9: sh= 0.30 cagr= 0.052
+[51/60] holdout_v9_rel5 H2026 s0: sh= 0.87 cagr= 0.273
+[52/60] holdout_v9_rel5 H2026 s1: sh= 0.57 cagr= 0.161
+[53/60] holdout_v9_rel5 H2026 s2: sh= 0.75 cagr= 0.189
+[54/60] holdout_v9_rel5 H2026 s3: sh= 0.98 cagr= 0.271
+[55/60] holdout_v9_rel5 H2026 s4: sh= 0.89 cagr= 0.229
+[56/60] holdout_v9_rel5 H2026 s5: sh= 0.67 cagr= 0.176
+[57/60] holdout_v9_rel5 H2026 s6: sh= 0.85 cagr= 0.205
+[58/60] holdout_v9_rel5 H2026 s8: sh= 0.90 cagr= 0.253
+[59/60] holdout_v9_rel5 H2026 s7: sh= 0.79 cagr= 0.190
+[60/60] holdout_v9_rel5 H2026 s9: sh= 0.56 cagr= 0.150
+done in 11.9 min
