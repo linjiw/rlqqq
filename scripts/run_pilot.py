@@ -90,6 +90,13 @@ CONFIGS = {
                       "drop_calendar": True, "with_cross_asset": True,
                       "vt_target": 0.20, "max_exposure": 1.5,
                       "relative_reward": True, "n_multipliers": 5},
+    # v11: research-refined macro set — VIX term slope (IC -0.50!) + credit
+    # appetite + slow stock-bond corr; redundant ratio-momentum removed.
+    "ppo_v11_refined": {"n_boot_paths": 3, "residual": True,
+                        "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                        "drop_calendar": True, "with_refined_macro": True,
+                        "vt_target": 0.20, "max_exposure": 1.5,
+                        "relative_reward": True, "n_multipliers": 5},
 }
 
 
@@ -103,8 +110,10 @@ def one_run(args):
     with_har = hp.pop("with_har", False)
     drop_calendar = hp.pop("drop_calendar", False)
     with_cross_asset = hp.pop("with_cross_asset", False)
+    with_refined_macro = hp.pop("with_refined_macro", False)
     market = load_market(symbol, with_har=with_har, drop_calendar=drop_calendar,
-                         with_cross_asset=with_cross_asset)
+                         with_cross_asset=with_cross_asset,
+                         with_refined_macro=with_refined_macro)
     fold = load_folds()[fold_idx]
     rec = train_and_eval_one(
         market, fold, seed=seed, config_name=config, timesteps=timesteps,

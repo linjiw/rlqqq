@@ -304,6 +304,30 @@ stock-bond corr 63d, VRP proxy, curve slope) to the v9_rel5 recipe:
   cross-asset vs price-only states — v9-vs-v10 IS that ablation
   (answer: risk-shape improvement, no Sharpe change). Publishable.
 
+## v11 + full current-design evaluation (2026-08-02)
+
+**v11 (research-refined macro: VIX term slope IC −0.50, credit appetite,
+slow stock-bond corr; ratio-momentum removed): NEUTRAL-to-negative** —
+Sharpe 1.042 vs v10's 1.083 (Δ −0.04 [−0.12,+0.03]). Despite the strongest
+IC screens of any features tested, the additions didn't help the policy:
+the VIX term slope's information is apparently already spanned by VIX level
++ realized-vol features (both in state). Another confirmation that IC on
+forward vol ≠ policy improvement when redundant with existing state. v10
+(same Sharpe as v9, better drawdown/Calmar) remains the reference design.
+
+**Current best design = v10_macro. Full three-set evaluation:**
+
+| | QQQ 2010–25 | NDX 2000–09 (validation) | 2026 YTD |
+|---|---|---|---|
+| v10_macro | 21.0% CAGR / 1.083 Sh / −18.8% DD | +3.7% / +0.157 / −55.8% | 11.7% / 0.88 Sh / −12.1% |
+| buy-and-hold | 20.7% / 0.947 / −29.6% | −5.4% / −0.055 / −82.2% | 12.5% / 0.89 / −11.7% |
+| vs B&H | ΔSh +0.15 [−0.04,+0.33] | **ΔSh +0.26 [+0.01,+0.52] SIG** | ≈ tie (7mo noise) |
+
+2026 detail: v10 matches B&H Sharpe (0.884 vs 0.886) in a calm bull —
+the macro state fixed v9's 2026 weakness (0.81 → 0.88 Sharpe, −13.7% →
+−12.1% DD) while keeping the same return. Latest live decision
+(2026-07-29): exposure 1.16, modestly levered into the pullback.
+
 ## Honest bottom line (as of v3)
 
 Everything found so far is consistent with the literature synthesis: RL

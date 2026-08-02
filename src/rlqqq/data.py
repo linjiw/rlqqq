@@ -131,9 +131,55 @@ def cross_asset_features(index: pd.DatetimeIndex, own_symbol: str) -> pd.DataFra
     return f.fillna(0.0)
 
 
+def refined_macro_features(index: pd.DatetimeIndex, own_symbol: str) -> pd.DataFrame:
+    """v11 refined macro set per lit_review/macro_state_research.md:
+    the two highest-conviction additions + the survivors of v10, with the
+    flagged-redundant ratio momentum removed and stock-bond corr slowed to
+    252d (per AQR/Molenaar: 60d rolling is unvalidated noise).
+
+    - vix_term_slope: VIX3M/VIX - 1 (Cheng RFS 2019; 2006-07+, 0 before)
+    - vix_backwardation: 1{slope < 0}
+    - credit_appetite_63: log 63d return of HYG/LQD ratio (HY-vs-IG risk
+      appetite from ETF prices; 2007+, 0 before). Proxy for HY OAS change.
+    - bond_tsm_63: sign of TLT 63d return (Pitkajarvi JFE 2020)
+    - stock_bond_corr_252: slow-regime correlation
+    - vrp_proxy, curve_slope: carried from v10
+    """
+    def close(name):
+        df = pd.read_csv(RAW / f"yf_{name}.csv", parse_dates=["Date"]).set_index("Date")
+        col = "Adj Close" if "Adj Close" in df.columns and df["Adj Close"].notna().all() else "Close"
+        return df[col]
+
+    own = close(own_symbol if own_symbol not in ("GSPC", "NDX", "VIX")
+                else f"IDX_{own_symbol}")
+    vix = close("IDX_VIX").reindex(index).ffill()
+    vix3m = close("IDX_VIX3M").reindex(index).ffill()
+    hyg = close("HYG").reindex(index).ffill()
+    lqd = close("LQD").reindex(index).ffill()
+    tlt = close("TLT").reindex(index).ffill()
+    spx = close("IDX_GSPC").reindex(index).ffill()
+    tnx = pd.read_csv(RAW / "yf_IDX_TNX.csv", parse_dates=["Date"]).set_index("Date")["Close"]
+    irx = pd.read_csv(RAW / "yf_IDX_IRX.csv", parse_dates=["Date"]).set_index("Date")["Close"]
+
+    f = pd.DataFrame(index=index)
+    slope = vix3m / vix - 1.0
+    f["vix_term_slope"] = slope
+    f["vix_backwardation"] = (slope < 0).astype(float)
+    cr = hyg / lqd
+    f["credit_appetite_63"] = np.log(cr / cr.shift(63))
+    f["bond_tsm_63"] = np.sign(np.log(tlt / tlt.shift(63)))
+    own_r = own.reindex(index).ffill().pct_change()
+    f["stock_bond_corr_252"] = own_r.rolling(252).corr(tlt.pct_change())
+    spx_r = spx.pct_change()
+    f["vrp_proxy"] = (vix / 100.0) ** 2 - spx_r.rolling(21).var() * 252
+    f["curve_slope"] = (tnx.reindex(index).ffill() - irx.reindex(index).ffill())
+    return f.fillna(0.0)
+
+
 def load_market(symbol: str = "SPY", with_context: bool = True,
                 with_har: bool = False, drop_calendar: bool = False,
-                with_cross_asset: bool = False) -> MarketData:
+                with_cross_asset: bool = False,
+                with_refined_macro: bool = False) -> MarketData:
     px = pd.read_parquet(PROCESSED / f"prices_{symbol}.parquet")
     feats = pd.read_parquet(PROCESSED / f"features_{symbol}.parquet")
 
@@ -162,6 +208,9 @@ def load_market(symbol: str = "SPY", with_context: bool = True,
         cols = list(F.columns)
     if with_cross_asset:
         F = F.join(cross_asset_features(px.index, symbol))
+        cols = list(F.columns)
+    if with_refined_macro:
+        F = F.join(refined_macro_features(px.index, symbol))
         cols = list(F.columns)
 
     df = pd.DataFrame({"ret": nxt_ret, "cash": cash_daily}, index=px.index).join(F)
