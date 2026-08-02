@@ -29,6 +29,70 @@ def file_sha256(path: Path) -> str:
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
+def test_deployed_browser_model_matches_the_checked_benchmark_winner():
+    web_report_path = ASSETS / "model-benchmark.json"
+    research_report_path = ROOT / "results" / "model_benchmark.json"
+    benchmark = read_json(web_report_path)
+    manifest = read_json(MODELS / "model-manifest.json")
+    signal = read_json(ASSETS / "live-signal.json")
+
+    assert web_report_path.read_bytes() == research_report_path.read_bytes()
+    assert benchmark["schemaVersion"] == 1
+    assert benchmark["historicalStatus"] == "complete"
+    assert benchmark["historicalWalkForward"]["provenance"]["seriesFiles"] == 160
+    implementation = benchmark["evaluationImplementation"]
+    assert implementation["sha256"] == file_sha256(ROOT / implementation["path"])
+
+    historical = benchmark["historicalWalkForward"]
+    assert historical["period"]["realizedEnd"] == "2026-01-02"
+    assert historical["oneCloseLagSensitivity"]["qqq"] == historical["metrics"]["qqq"]
+    assert (
+        benchmark["frozen2026"]["oneCloseLagSensitivity"]["v4Core"]["sharpe"]
+        > benchmark["frozen2026"]["oneCloseLagSensitivity"]["v8Core"]["sharpe"]
+    )
+
+    selection = benchmark["deploymentSelection"]
+    assert selection["winner"] == "v8Core"
+    assert selection["modelVersion"] == manifest["modelVersion"]
+    assert selection["modelVersion"] == signal["model"]["version"]
+    assert selection["capitalDeploymentQualified"] is False
+    assert set(selection["ineligibleResearchOverlays"]) == {
+        "v4Composite",
+        "v8Composite",
+    }
+
+    forward = benchmark["frozen2026"]
+    assert forward["period"]["latestSignalScored"] is False
+    assert forward["latestUnscoredSignal"]["v8"]["asOf"] == signal["asOf"]
+
+
+def test_page_exposes_only_the_benchmark_gated_v8_core_as_current():
+    html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
+    javascript = (ASSETS / "dashboard.js").read_text(encoding="utf-8")
+
+    assert "v8 core is the browser deployment winner" in html
+    assert "v8 core is the sole deployed policy" in html
+    assert 'id="benchmark"' in html
+    assert 'id="live-composite"' not in html
+    assert "loadVerifiedDeployment" in javascript
+    assert "Live model does not match the checked benchmark winner" in javascript
+    assert 'key: "vt20"' in javascript
+
+    historical_table = html.split(
+        "Official 2010 through 2025 policy benchmark", 1
+    )[1].split("</table>", 1)[0]
+    forward_table = html.split("Official frozen 2026 policy benchmark", 1)[1].split(
+        "</table>", 1
+    )[0]
+    assert "CAGR" in historical_table
+    assert "Lag Sharpe" in historical_table
+    assert "2026 YTD" not in historical_table
+    assert "2026 YTD" in forward_table
+    assert "July" in forward_table
+    assert "Lag Sharpe" in forward_table
+    assert "Calmar" not in forward_table
+
+
 def test_static_browser_bundle_is_hash_bound_to_the_frozen_actor():
     manifest_path = MODELS / "model-manifest.json"
     manifest = read_json(manifest_path)
@@ -41,6 +105,7 @@ def test_static_browser_bundle_is_hash_bound_to_the_frozen_actor():
     assert file_sha256(source_path) == ensemble.artifact_sha256
 
     onnx_path = MODELS / manifest["onnx"]["path"]
+    assert list(MODELS.glob("*.onnx")) == [onnx_path]
     assert onnx_path.stat().st_size == manifest["onnx"]["bytes"]
     assert file_sha256(onnx_path) == manifest["onnx"]["sha256"]
     assert manifest["onnx"]["sha256"].startswith(

@@ -2,12 +2,15 @@
 
 ## Boundary
 
-The public page runs the official frozen v8 no-calendar policy in the
-browser. It does not call a market-data API. The two release paths are
+The public page runs only the selected frozen v8 no-calendar **core** policy
+in the browser. It does not expose the post-hoc composite as a live target and
+does not call a market-data API. The two release paths are
 deliberately separate:
 
 1. `models/live/ppo_v8_nocal_frozen_2023_v1.npz` is the source release. It
    contains the shared training normalizer and all ten deterministic actors.
+   Its `2023-12-31` cutoff is a decision-date label: the last training feature
+   row is `2023-12-29`, and that row's reward realizes on `2024-01-02`.
 2. `scripts/export_browser_policy.py` converts that NPZ, without retraining,
    into one float64 ONNX graph with ten actors. The filename contains the
    first 12 characters of its SHA-256; the manifest records the complete ONNX
@@ -121,8 +124,29 @@ the `T` target must not be counted until another close exists. It is a delayed
 research target, not an intraday price or an order executable at the already
 observed close.
 
-The primary current stance is the frozen v8 ensemble. The historical animation
-is the audited v4 replay, and the tilt-on-VT20 composite remains a post-hoc
-candidate. The v8 reference was selected after the 2026 holdout had been
-opened, so its 2026 comparison is not a new untouched test. None of these
-outputs is personalized investment advice or an execution order.
+The primary and only deployed stance is the frozen v8 core ensemble. The
+historical animation is an archived v4 replay; its tilt-on-VT20 composite is a
+post-hoc leverage overlay, not another model or a deployment candidate.
+
+`scripts/evaluate_model_benchmark.py` provides the checked deployment gate.
+It evaluates 8 folds x 10 seeds per version with the same cash, financing, and
+2 bp one-way cost accounting, then reports frozen 2026 performance and a
+conservative one-close-lag sensitivity. The full rerun makes v4 and v8 core a
+near-tie on the optimistic research timing (Sharpe 1.021 vs 1.026); v8 has
+two fewer questionable calendar features, lower turnover, the marginally
+better Calmar, a stronger historical lag sensitivity, and a stronger
+same-close frozen-2026 comparison. The predeclared simplification rule
+therefore selects v8. The difference is not proof of statistical superiority,
+and simple VT10 remains a demanding benchmark.
+
+Those two supporting comparisons use different qualifiers: v8 leads v4 on
+the **historical** one-close-lag sensitivity and on the **same-close** frozen
+2026 replay. The short 2026 lag sensitivity reverses the core ranking (v4
+Sharpe 0.820 versus v8 0.603), so it reinforces the research-only boundary
+rather than serving as promotion evidence.
+
+The v8 reference was selected after the 2026 holdout had been opened, so its
+2026 comparison is not a new untouched test. Retraining can also differ from
+the checked results because the historical training stack was not pinned.
+None of these outputs is personalized investment advice or an execution
+order.
