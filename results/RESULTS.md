@@ -274,6 +274,36 @@ leverage (0.98 vs 1.14 avg). Next dial per research: quadratic-variation
 penalty λ as fractional-Kelly knob (λ<0 would encourage leverage; risky),
 or simply note the CAGR difference is inside the CI.
 
+## v10: cross-asset macro state (2026-08-02)
+
+First pass at the "smarter = better conditioning information" axis (see
+`docs/smarter_agent.md`, `lit_review/macro_state_research.md`). Added 6
+IC-screened cross-asset features (SPX ratio momentum, bond/gold trend,
+stock-bond corr 63d, VRP proxy, curve slope) to the v9_rel5 recipe:
+
+| | 2010–2025 QQQ | | era NDX 2000–09 | |
+|---|---|---|---|---|
+| | v9 (price-only) | v10 (macro) | v9 | v10 |
+| CAGR | 21.3% | 21.0% | +3.8% | +3.7% |
+| Sharpe | 1.082 | 1.083 | +0.159 | +0.157 |
+| MaxDD | −22.1% | **−18.8%** | −55.6% | −55.8% |
+| Calmar | 0.961 | **1.115** | — | — |
+| turnover | 19.7 | 16.2 | — | — |
+
+- In-era: **same Sharpe, materially better drawdown (−18.8% vs −22.1%) and
+  Calmar (1.115 vs 0.961)**, lower turnover. ΔSharpe vs v9 +0.00 — the
+  macro information improved risk shape, not returns. Out-of-era: identical
+  to v9 (significant vs B&H either way); macro features neither helped nor
+  hurt in the 2000s (several are zero-filled pre-2004 — TLT/GLD inception).
+- The research memo's post-hoc verdict: our spx_ratio_mom feature is
+  exactly the "mechanically redundant" type it warns against; the
+  highest-conviction additions we did NOT yet have are **VIX term slope
+  (VXVCLS, 2007+) and HY credit OAS (1996+)** — but both are FRED series
+  and FRED is blocked from this host; flagged as data acquisition TODO.
+- Verified literature gap: no published RL-trading paper ablates
+  cross-asset vs price-only states — v9-vs-v10 IS that ablation
+  (answer: risk-shape improvement, no Sharpe change). Publishable.
+
 ## Honest bottom line (as of v3)
 
 Everything found so far is consistent with the literature synthesis: RL
