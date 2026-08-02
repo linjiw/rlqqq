@@ -83,6 +83,13 @@ CONFIGS = {
                     "drop_calendar": True, "vt_target": 0.20,
                     "max_exposure": 1.5, "relative_reward": True,
                     "n_multipliers": 5},
+    # v10: v9_rel5 + cross-asset/macro state (SPX ratio momentum, bond/gold
+    # trend, stock-bond corr, VRP proxy, curve slope). IC-screened.
+    "ppo_v10_macro": {"n_boot_paths": 3, "residual": True,
+                      "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                      "drop_calendar": True, "with_cross_asset": True,
+                      "vt_target": 0.20, "max_exposure": 1.5,
+                      "relative_reward": True, "n_multipliers": 5},
 }
 
 
@@ -95,7 +102,9 @@ def one_run(args):
     hp = dict(CONFIGS.get(config, {}))
     with_har = hp.pop("with_har", False)
     drop_calendar = hp.pop("drop_calendar", False)
-    market = load_market(symbol, with_har=with_har, drop_calendar=drop_calendar)
+    with_cross_asset = hp.pop("with_cross_asset", False)
+    market = load_market(symbol, with_har=with_har, drop_calendar=drop_calendar,
+                         with_cross_asset=with_cross_asset)
     fold = load_folds()[fold_idx]
     rec = train_and_eval_one(
         market, fold, seed=seed, config_name=config, timesteps=timesteps,

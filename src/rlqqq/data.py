@@ -79,8 +79,61 @@ def har_rv_features(px: pd.DataFrame) -> pd.DataFrame:
     return f
 
 
+def cross_asset_features(index: pd.DatetimeIndex, own_symbol: str) -> pd.DataFrame:
+    """Cross-asset / macro context computed causally from other symbols'
+    daily closes. All features known at close of day t.
+
+    - spx_ratio_mom_63: 63d momentum of own/SPX total-return ratio
+      (relative risk appetite; for SPY itself uses NDX as the counterpart)
+    - bond_trend: TLT 63d return (flight-to-quality trend)
+    - gold_trend: GLD 63d return (defensive bid)
+    - stock_bond_corr_63: rolling 63d corr of own vs TLT daily returns
+      (regime signal; positive corr = inflation-shock regime)
+    - vrp_proxy: VIX^2/252 minus 21d realized variance of SPX (variance risk
+      premium proxy; negative = implied below realized = stress)
+    - curve_slope: 10y minus 3m yield (recession antenna, already partly in
+      context but recomputed here for symbols loaded without context)
+    """
+    def tr_close(name):
+        df = pd.read_csv(RAW / f"yf_{name}.csv", parse_dates=["Date"]).set_index("Date")
+        col = "Adj Close" if "Adj Close" in df.columns and df["Adj Close"].notna().all() else "Close"
+        return df[col]
+
+    own = tr_close(own_symbol if own_symbol not in ("GSPC", "NDX", "VIX")
+                   else f"IDX_{own_symbol}")
+    counterpart = tr_close("IDX_GSPC") if own_symbol != "SPY" else tr_close("IDX_NDX")
+    tlt = tr_close("TLT")
+    gld = tr_close("GLD")
+    vix = tr_close("IDX_VIX")
+    spx = tr_close("IDX_GSPC")
+    # NOTE: both ^TNX and ^IRX quote percent directly (verified against
+    # historical rates: ^TNX 8.44 in 1990-06 = 8.44% 10y yield). No /10.
+    tnx = pd.read_csv(RAW / "yf_IDX_TNX.csv", parse_dates=["Date"]).set_index("Date")["Close"]
+    irx = pd.read_csv(RAW / "yf_IDX_IRX.csv", parse_dates=["Date"]).set_index("Date")["Close"]
+
+    f = pd.DataFrame(index=index)
+    ratio = (own / counterpart).reindex(index).ffill()
+    f["spx_ratio_mom_63"] = np.log(ratio / ratio.shift(63))
+    tlt_a = tlt.reindex(index).ffill()
+    f["bond_trend"] = np.log(tlt_a / tlt_a.shift(63))
+    gld_a = gld.reindex(index).ffill()
+    f["gold_trend"] = np.log(gld_a / gld_a.shift(63))
+    own_r = own.reindex(index).ffill().pct_change()
+    tlt_r = tlt_a.pct_change()
+    f["stock_bond_corr_63"] = own_r.rolling(63).corr(tlt_r)
+    spx_r = spx.reindex(index).ffill().pct_change()
+    rv21 = spx_r.rolling(21).var() * 252
+    vix_a = vix.reindex(index).ffill()
+    f["vrp_proxy"] = (vix_a / 100.0) ** 2 - rv21
+    f["curve_slope"] = (tnx.reindex(index).ffill() - irx.reindex(index).ffill())
+    # TLT starts 2002-07, GLD 2004-11: fill early NaNs with neutral 0
+    # (features encode "no signal" pre-inception rather than dropping rows)
+    return f.fillna(0.0)
+
+
 def load_market(symbol: str = "SPY", with_context: bool = True,
-                with_har: bool = False, drop_calendar: bool = False) -> MarketData:
+                with_har: bool = False, drop_calendar: bool = False,
+                with_cross_asset: bool = False) -> MarketData:
     px = pd.read_parquet(PROCESSED / f"prices_{symbol}.parquet")
     feats = pd.read_parquet(PROCESSED / f"features_{symbol}.parquet")
 
@@ -106,6 +159,9 @@ def load_market(symbol: str = "SPY", with_context: bool = True,
         cols = list(F.columns)
     if drop_calendar:
         F = F.drop(columns=[c for c in ("dow", "month") if c in F.columns])
+        cols = list(F.columns)
+    if with_cross_asset:
+        F = F.join(cross_asset_features(px.index, symbol))
         cols = list(F.columns)
 
     df = pd.DataFrame({"ret": nxt_ret, "cash": cash_daily}, index=px.index).join(F)
