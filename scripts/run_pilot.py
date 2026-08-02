@@ -71,6 +71,18 @@ CONFIGS = {
     "ppo_v8_nocal": {"n_boot_paths": 3, "residual": True,
                      "switch_penalty_bps": 5.0, "ent_coef": 0.005,
                      "drop_calendar": True},
+    # v9: beat the tilt-transfer end-to-end. Baseline = vt20 cap1.5 (the
+    # deployment target), reward = advantage over holding that baseline.
+    "ppo_v9_rel": {"n_boot_paths": 3, "residual": True,
+                   "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                   "drop_calendar": True, "vt_target": 0.20,
+                   "max_exposure": 1.5, "relative_reward": True},
+    # v9b: same + finer 5-level multiplier grid
+    "ppo_v9_rel5": {"n_boot_paths": 3, "residual": True,
+                    "switch_penalty_bps": 5.0, "ent_coef": 0.005,
+                    "drop_calendar": True, "vt_target": 0.20,
+                    "max_exposure": 1.5, "relative_reward": True,
+                    "n_multipliers": 5},
 }
 
 

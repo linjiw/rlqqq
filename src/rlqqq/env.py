@@ -30,6 +30,7 @@ from .data import MarketData, Normalizer
 
 EXPOSURE_LEVELS = np.array([0.0, 0.5, 1.0])
 RESIDUAL_MULTIPLIERS = np.array([0.5, 1.0, 1.5])
+RESIDUAL_MULTIPLIERS_5 = np.array([0.5, 0.75, 1.0, 1.25, 1.5])
 
 
 def causal_vol_target(ret: np.ndarray, target: float = 0.10,
@@ -92,6 +93,8 @@ class ExposureTradingEnv(gym.Env):
         switch_penalty_bps: float = 0.0,
         max_exposure: float = 1.0,
         vt_target: float = 0.10,
+        relative_reward: bool = False,
+        n_multipliers: int = 3,
     ):
         super().__init__()
         self.data = data
@@ -113,9 +116,19 @@ class ExposureTradingEnv(gym.Env):
         # training-only extra cost per unit turnover (bps) - shapes the policy
         # toward fewer switches; realized accounting still uses cost_bps.
         self.switch_penalty_bps = float(switch_penalty_bps)
+        # relative reward: reward = log1p(net_agent) - log1p(net_baseline),
+        # where the baseline holds its own exposure (clipped to max_exposure)
+        # with the same costs. Holding the baseline scores ~0; deviations pay
+        # only when they beat it. Training-only; evaluation uses raw nets.
+        self.relative_reward = relative_reward
+        self._multipliers = (RESIDUAL_MULTIPLIERS_5 if n_multipliers == 5
+                             else RESIDUAL_MULTIPLIERS)
         self._rng = np.random.default_rng(seed)
         self._baseline = (causal_vol_target(data.ret, target=vt_target)
                           if residual else None)
+        if self._baseline is not None:
+            self._baseline_capped = np.clip(self._baseline, 0.0, self.max_exposure)
+            self._w_base_prev = 0.0
 
         n_feat = data.feat.shape[1]
         # observation = normalized features + current exposure (+ baseline w)
@@ -124,7 +137,7 @@ class ExposureTradingEnv(gym.Env):
             low=-np.inf, high=np.inf, shape=(obs_dim,), dtype=np.float32
         )
         if residual:
-            self.action_space = spaces.Discrete(len(RESIDUAL_MULTIPLIERS))
+            self.action_space = spaces.Discrete(len(self._multipliers))
         elif discrete:
             self.action_space = spaces.Discrete(len(EXPOSURE_LEVELS))
         else:
@@ -145,7 +158,7 @@ class ExposureTradingEnv(gym.Env):
 
     def _action_to_exposure(self, action: Any) -> float:
         if self.residual:
-            mult = RESIDUAL_MULTIPLIERS[int(action)]
+            mult = self._multipliers[int(action)]
             return float(np.clip(mult * self._baseline[self._t], 0.0,
                                  self.max_exposure))
         if self.discrete:
@@ -167,6 +180,8 @@ class ExposureTradingEnv(gym.Env):
             self._t = 0
             self._end = n
         self._w = self.w_init
+        if self._baseline is not None:
+            self._w_base_prev = self.w_init
         return self._obs(), {}
 
     def step(self, action):
@@ -185,6 +200,16 @@ class ExposureTradingEnv(gym.Env):
         reward = (float(np.log1p(net))
                   - self.reward_lambda * float(net) ** 2
                   - (self.switch_penalty_bps / 1e4) * turnover)
+        if self.relative_reward and self._baseline is not None:
+            wb = self._baseline_capped[t]
+            if wb <= 1.0:
+                base_cash = (1.0 - wb) * self.data.cash[t]
+            else:
+                base_cash = -(wb - 1.0) * (self.data.cash[t] + 50.0 / 1e4 / 252.0)
+            base_net = (wb * self.data.ret[t] + base_cash
+                        - (self.cost_bps / 1e4) * abs(wb - self._w_base_prev))
+            self._w_base_prev = wb
+            reward -= float(np.log1p(base_net))
         self._w = w
         self._t += 1
         terminated = self._t >= self._end
@@ -206,13 +231,14 @@ def run_policy(
     residual: bool = False,
     max_exposure: float = 1.0,
     vt_target: float = 0.10,
+    n_multipliers: int = 3,
 ) -> dict:
     """Roll a trained SB3 policy over a full data slice once and return the
     exposure series + net daily returns (via the shared accounting identity)."""
     env = ExposureTradingEnv(env_data, normalizer, cost_bps=cost_bps,
                              discrete=discrete, episode_len=None,
                              residual=residual, max_exposure=max_exposure,
-                             vt_target=vt_target)
+                             vt_target=vt_target, n_multipliers=n_multipliers)
     obs, _ = env.reset()
     exposures = np.empty(len(env_data))
     for i in range(len(env_data)):
