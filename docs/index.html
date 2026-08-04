@@ -1,926 +1,408 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta
       name="description"
-      content="Verified browser deployment of the RLQQQ v10 macro core, its official model benchmark, and an archived v4 research replay."
-    >
-    <meta name="theme-color" content="#f4f6f3">
-    <title>RLQQQ v10 Macro Core Deployment</title>
-    <link rel="icon" href="favicon.svg" type="image/svg+xml">
-    <link rel="stylesheet" href="assets/dashboard.css">
-    <script defer src="assets/lucide.min.js"></script>
-    <script defer src="assets/dashboard.js"></script>
+      content="RLQQQ: a reinforcement-learning risk overlay on QQQ. Today's model decision, how it works, and 16 years of walk-forward performance."
+    />
+    <title>RLQQQ — an RL risk overlay on QQQ</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml" />
+    <style>
+      /* ---------- tokens ---------- */
+      :root {
+        color-scheme: light;
+        --surface-0: #fcfcfb;
+        --surface-1: #ffffff;
+        --border: #e5e4e0;
+        --text-primary: #0b0b0b;
+        --text-secondary: #52514e;
+        --text-muted: #8a8984;
+        --series-model: #2a78d6;
+        --series-qqq: #eb6834;
+        --series-rule: #1baf7a;
+        --good-bg: #e7f3ea;
+        --good-fg: #1c6b31;
+        --warn-bg: #fdf0e5;
+        --warn-fg: #8a4a12;
+        --shadow: 0 1px 3px rgb(0 0 0 / 6%);
+      }
+      @media (prefers-color-scheme: dark) {
+        :root:where(:not([data-theme="light"])) {
+          color-scheme: dark;
+          --surface-0: #171716;
+          --surface-1: #1f1f1e;
+          --border: #33332f;
+          --text-primary: #ffffff;
+          --text-secondary: #c3c2b7;
+          --text-muted: #8a8984;
+          --series-model: #3987e5;
+          --series-qqq: #d95926;
+          --series-rule: #199e70;
+          --good-bg: #12301b;
+          --good-fg: #7fce96;
+          --warn-bg: #3a2410;
+          --warn-fg: #eab576;
+          --shadow: none;
+        }
+      }
+
+      /* ---------- base ---------- */
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        background: var(--surface-0);
+        color: var(--text-primary);
+        font: 16px/1.55 -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      }
+      main { max-width: 880px; margin: 0 auto; padding: 0 20px 72px; }
+      h1 { font-size: 1.7rem; line-height: 1.25; margin: 0 0 6px; }
+      h2 { font-size: 1.2rem; margin: 52px 0 4px; }
+      h2 + p.lede { margin-top: 2px; }
+      p { color: var(--text-secondary); }
+      p.lede { font-size: 0.97rem; }
+      small, .muted { color: var(--text-muted); }
+      a { color: var(--series-model); }
+      .card {
+        background: var(--surface-1);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        box-shadow: var(--shadow);
+        padding: 20px;
+      }
+
+      /* ---------- header ---------- */
+      header.site {
+        display: flex; justify-content: space-between; align-items: baseline;
+        max-width: 880px; margin: 0 auto; padding: 22px 20px 30px;
+      }
+      header.site .brand { font-weight: 700; letter-spacing: 0.02em; }
+      header.site nav a { margin-left: 18px; font-size: 0.9rem; text-decoration: none; }
+      header.site nav a:hover { text-decoration: underline; }
+
+      /* ---------- hero decision ---------- */
+      .hero { display: grid; grid-template-columns: 1fr; gap: 16px; }
+      @media (min-width: 720px) { .hero { grid-template-columns: 5fr 4fr; } }
+      .decision-value {
+        font-size: 3.4rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05;
+        font-variant-numeric: tabular-nums;
+      }
+      .decision-value small { font-size: 1.2rem; font-weight: 600; }
+      .stance {
+        display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 99px;
+        font-size: 0.82rem; font-weight: 600; background: var(--warn-bg); color: var(--warn-fg);
+      }
+      .stance.full { background: var(--good-bg); color: var(--good-fg); }
+      .gauge { margin-top: 18px; }
+      .gauge-track {
+        position: relative; height: 12px; border-radius: 6px;
+        background: linear-gradient(to right, var(--border), var(--border));
+      }
+      .gauge-fill {
+        position: absolute; inset: 0 auto 0 0; border-radius: 6px;
+        background: var(--series-model); width: 0;
+        transition: width 600ms ease;
+      }
+      .gauge-marker {
+        position: absolute; top: -4px; width: 2px; height: 20px;
+        background: var(--text-muted);
+      }
+      .gauge-labels {
+        display: flex; justify-content: space-between;
+        font-size: 0.75rem; color: var(--text-muted); margin-top: 6px;
+      }
+      .decision-meta { font-size: 0.85rem; margin-top: 14px; }
+      .verify-badge {
+        display: inline-flex; align-items: center; gap: 6px;
+        font-size: 0.8rem; padding: 3px 10px; border-radius: 99px;
+        border: 1px solid var(--border); color: var(--text-secondary);
+      }
+      .verify-badge .dot {
+        width: 8px; height: 8px; border-radius: 50%;
+        background: var(--text-muted);
+      }
+      .verify-badge.ok .dot { background: var(--good-fg); }
+      .verify-badge.fail .dot { background: var(--series-qqq); }
+      .market-list { list-style: none; margin: 0; padding: 0; font-size: 0.92rem; }
+      .market-list li {
+        display: flex; justify-content: space-between;
+        padding: 7px 0; border-bottom: 1px solid var(--border);
+      }
+      .market-list li:last-child { border-bottom: 0; }
+      .market-list .v { font-variant-numeric: tabular-nums; color: var(--text-primary); }
+
+      /* ---------- stat tiles ---------- */
+      .tiles { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-top: 16px; }
+      @media (min-width: 720px) { .tiles { grid-template-columns: repeat(4, 1fr); } }
+      .tile { padding: 14px 16px; }
+      .tile .k { font-size: 0.78rem; color: var(--text-muted); }
+      .tile .n { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .tile .c { font-size: 0.78rem; color: var(--text-muted); }
+
+      /* ---------- charts ---------- */
+      .chart-card { margin-top: 16px; }
+      .chart-head { display: flex; justify-content: space-between; align-items: baseline; flex-wrap: wrap; gap: 6px; }
+      .chart-head h3 { margin: 0; font-size: 1rem; }
+      .legend { display: flex; gap: 16px; font-size: 0.82rem; color: var(--text-secondary); }
+      .legend i { display: inline-block; width: 14px; height: 3px; border-radius: 2px; margin-right: 5px; vertical-align: middle; }
+      .legend .model i { background: var(--series-model); }
+      .legend .qqq i { background: var(--series-qqq); }
+      .legend .rule i { background: var(--series-rule); }
+      svg.chart { width: 100%; height: auto; display: block; margin-top: 10px; }
+      svg.chart text { font: 11px -apple-system, "Segoe UI", sans-serif; fill: var(--text-muted); }
+      svg.chart .gridline { stroke: var(--border); stroke-width: 1; }
+      svg.chart .axisline { stroke: var(--border); stroke-width: 1; }
+      .chart-note { font-size: 0.8rem; color: var(--text-muted); margin: 8px 0 0; }
+      .crosshair-tip {
+        position: absolute; pointer-events: none; background: var(--surface-1);
+        border: 1px solid var(--border); border-radius: 8px; box-shadow: var(--shadow);
+        padding: 8px 10px; font-size: 0.78rem; color: var(--text-secondary);
+        white-space: nowrap; z-index: 5; display: none;
+      }
+      .crosshair-tip b { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+      /* ---------- how it works ---------- */
+      .steps { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 16px; counter-reset: step; }
+      @media (min-width: 720px) { .steps { grid-template-columns: repeat(3, 1fr); } }
+      .step { padding: 18px; }
+      .step::before {
+        counter-increment: step; content: counter(step);
+        display: inline-flex; width: 26px; height: 26px; border-radius: 50%;
+        background: var(--series-model); color: #fff; font-weight: 700; font-size: 0.85rem;
+        align-items: center; justify-content: center; margin-bottom: 10px;
+      }
+      .step h3 { margin: 0 0 6px; font-size: 0.95rem; }
+      .step p { margin: 0; font-size: 0.88rem; }
+
+      /* ---------- stress ---------- */
+      .stress-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
+      @media (min-width: 720px) { .stress-grid { grid-template-columns: 1fr 1fr; } }
+      .stress-num { font-size: 2rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+      .stress-num.model { color: var(--series-model); }
+      .stress-num.qqq { color: var(--series-qqq); }
+
+      /* ---------- table + footer ---------- */
+      table.annual { width: 100%; border-collapse: collapse; margin-top: 10px; font-size: 0.88rem; }
+      table.annual th, table.annual td {
+        text-align: right; padding: 6px 8px; border-bottom: 1px solid var(--border);
+        font-variant-numeric: tabular-nums;
+      }
+      table.annual th:first-child, table.annual td:first-child { text-align: left; }
+      table.annual th { color: var(--text-muted); font-weight: 600; font-size: 0.78rem; }
+      .footnotes { margin-top: 56px; font-size: 0.82rem; color: var(--text-muted); }
+      .footnotes p { color: var(--text-muted); margin: 6px 0; }
+      .visually-hidden {
+        position: absolute; width: 1px; height: 1px; overflow: hidden;
+        clip: rect(0 0 0 0); white-space: nowrap;
+      }
+      details.data-table { margin-top: 10px; font-size: 0.85rem; }
+      details.data-table summary { cursor: pointer; color: var(--text-muted); }
+    </style>
   </head>
   <body>
-    <a class="skip-link" href="#main-content">Skip to dashboard</a>
-
-    <header class="app-header">
-      <div class="header-inner">
-        <a class="brand" href="#deployment" aria-label="RLQQQ deployment dashboard home">
-          <span class="brand-mark" aria-hidden="true">RQ</span>
-          <span>
-            <strong>RLQQQ</strong>
-            <small>One browser model</small>
-          </span>
-        </a>
-
-        <nav class="top-nav" aria-label="Dashboard sections">
-          <a href="#deployment">v10 winner</a>
-          <a href="#live">Live core</a>
-          <a href="#benchmark">Benchmark</a>
-          <a href="#replay">Archive</a>
-          <a href="#evidence">Evidence</a>
-        </nav>
-
-        <a
-          class="icon-button tooltip"
-          href="https://github.com/linjiw/rlqqq"
-          aria-label="View source repository"
-          data-tooltip="View source"
-        >
-          <i data-lucide="github" aria-hidden="true"></i>
-        </a>
-      </div>
+    <header class="site">
+      <span class="brand">RLQQQ</span>
+      <nav>
+        <a href="#decision">Today</a>
+        <a href="#how">How it works</a>
+        <a href="#performance">Performance</a>
+        <a href="research.html">Research console</a>
+        <a href="https://github.com/linjiw/rlqqq">GitHub</a>
+      </nav>
     </header>
 
-    <main id="main-content">
-      <section class="overview-band" id="deployment" aria-labelledby="page-title">
-        <div class="overview-copy">
-          <div class="eyebrow">
-            <span class="status-dot" aria-hidden="true"></span>
-            v10 deployment winner · one model deployed · paper only
-          </div>
-          <h1 id="page-title">v10 macro core is the browser deployment winner</h1>
-          <p>
-            The browser deploys only the frozen v10 macro (leveraged) core, selected
-            from trained core policies by the official benchmark. Post-hoc
-            composite overlays remain research artifacts and are never served
-            as the live target. This is a research and paper-trading signal,
-            not a policy qualified for capital deployment.
-          </p>
-        </div>
-        <div class="overview-facts" aria-label="Deployment facts">
-          <div>
-            <span>Deployed policy</span>
-            <strong>v10 core only</strong>
-          </div>
-          <div>
-            <span>Deployment scope</span>
-            <strong>Browser research only</strong>
-          </div>
-          <div>
-            <span>Exposure cap</span>
-            <strong>1.5x, financed at T-bill +50bp</strong>
-          </div>
-        </div>
-      </section>
+    <main>
+      <!-- ================= HERO: today's decision ================= -->
+      <section id="decision" aria-labelledby="decision-title">
+        <h1 id="decision-title">A reinforcement-learning risk overlay on QQQ</h1>
+        <p class="lede">
+          One frozen model, retrained never, verified in your browser. It holds a
+          volatility-managed QQQ position and tilts it up or down each day within
+          a 0&ndash;1.5&times; band.
+        </p>
 
-      <section class="live-band" id="live" aria-labelledby="live-title">
-        <div class="content-width">
-          <div class="live-heading">
-            <div>
-              <span class="section-kicker">Deployed model · latest delayed close</span>
-              <h2 id="live-title">v10 macro core browser research deployment</h2>
-              <p>One frozen model; QQQ core exposure for the next close-to-close session</p>
+        <div class="hero">
+          <div class="card">
+            <div class="k muted" style="font-size:0.82rem">Today's target exposure &middot; next close-to-close session</div>
+            <div class="decision-value"><span id="decision-number">&ndash;.&ndash;&ndash;</span><small>&times; QQQ</small></div>
+            <span class="stance" id="decision-stance">checking&hellip;</span>
+            <div class="gauge" aria-hidden="true">
+              <div class="gauge-track">
+                <div class="gauge-fill" id="gauge-fill"></div>
+                <div class="gauge-marker" style="left: 66.67%" title="1.0x"></div>
+              </div>
+              <div class="gauge-labels"><span>cash</span><span>0.75&times;</span><span>1.5&times; max</span></div>
             </div>
-            <div class="live-freshness">
-              <span class="live-status is-loading" id="live-status">
-                <i data-lucide="loader-circle" aria-hidden="true"></i>
-                Verifying ONNX
+            <p class="decision-meta">
+              <span class="verify-badge" id="verify-badge" title="The model runs as ONNX in this browser; the result is shown only if it matches an independently computed Python reference exactly.">
+                <span class="dot"></span><span id="verify-text">verifying in this browser&hellip;</span>
               </span>
-              <time id="live-as-of">Awaiting market data</time>
-            </div>
+            </p>
+            <p class="decision-meta muted" id="decision-asof">Loading latest close&hellip;</p>
           </div>
 
-          <section
-            class="browser-verification is-loading"
-            id="browser-verification"
-            aria-labelledby="browser-verification-title"
-            aria-busy="true"
-          >
-            <div class="browser-verification-heading">
-              <div>
-                <span class="section-kicker">Local inference audit</span>
-                <h3 id="browser-verification-title">Browser policy verification</h3>
-              </div>
-              <strong
-                class="browser-verification-status"
-                id="browser-verification-status"
-                role="status"
-                aria-live="polite"
-              >
-                <i data-lucide="loader-circle" aria-hidden="true"></i>
-                Verifying ONNX
-              </strong>
-            </div>
-
-            <dl class="browser-parity" aria-label="Model parity checks">
-              <div>
-                <dt>Model parity</dt>
-                <dd id="verification-model">Checking version</dd>
-              </div>
-              <div>
-                <dt>Source parity</dt>
-                <dd id="verification-source">Checking Python replay</dd>
-              </div>
-              <div>
-                <dt>Hash parity</dt>
-                <dd id="verification-hash">Checking artifacts</dd>
-              </div>
-              <div>
-                <dt>Date parity</dt>
-                <dd id="verification-date">Checking latest session</dd>
-              </div>
-            </dl>
-
-            <div class="browser-votes" aria-label="Ten-seed action vote counts">
-              <span>10-seed action votes</span>
-              <div>
-                <span>Below anchor <strong id="verification-vote-low">--</strong></span>
-                <span>At anchor <strong id="verification-vote-middle">--</strong></span>
-                <span>Above anchor <strong id="verification-vote-high">--</strong></span>
-                <span class="browser-vote-total" id="verification-vote-total">-- / 10</span>
-              </div>
-            </div>
-
-            <p class="browser-verification-detail" id="browser-verification-detail">
-              Loading the frozen model and replaying its Python reference in this browser.
-              Current exposure remains withheld until every check passes.
-            </p>
-          </section>
-
-          <div class="live-grid" id="live-grid" aria-busy="true">
-            <article class="live-signal-panel">
-              <div class="live-panel-label">
-                <span>Deployed v10 core</span>
-                <span class="stance-badge is-defensive" id="live-stance">--</span>
-              </div>
-              <div class="live-target">
-                <strong id="live-learned-target">--</strong>
-                <span id="live-posture">Exposure withheld pending verification</span>
-              </div>
-              <div
-                class="live-gauge"
-                id="live-gauge"
-                role="img"
-                aria-label="Current v10 core exposure on a zero to one-point-five times scale"
-              >
-                <span id="live-gauge-fill"></span>
-                <i id="live-gauge-range"></i>
-                <b aria-hidden="true"></b>
-              </div>
-              <div class="gauge-labels" aria-hidden="true">
-                <span>Cash</span>
-                <span>0.75x</span>
-                <span>1.5x</span>
-              </div>
-              <dl class="live-decision-chain">
-                <div>
-                  <dt>Volatility anchor</dt>
-                  <dd id="live-vt10">--</dd>
-                </div>
-                <div>
-                  <dt>Learned residual</dt>
-                  <dd id="live-tilt">--</dd>
-                </div>
-                <div>
-                  <dt>Seed range</dt>
-                  <dd id="live-seed-range">--</dd>
-                </div>
-              </dl>
-              <p class="live-explanation" id="live-explanation">
-                Browser verification must pass before the current exposure is shown.
-              </p>
-            </article>
-
-            <article class="live-market-panel">
-              <div class="live-panel-label">
-                <span>Market state</span>
-                <strong>QQQ</strong>
-              </div>
-              <div class="live-market-grid">
-                <div>
-                  <span>Adjusted close</span>
-                  <strong id="live-price">--</strong>
-                  <small id="live-daily-change">--</small>
-                </div>
-                <div>
-                  <span>21d volatility</span>
-                  <strong id="live-volatility">--</strong>
-                  <small>Annualized</small>
-                </div>
-                <div>
-                  <span>21d momentum</span>
-                  <strong id="live-momentum">--</strong>
-                  <small>Close to close</small>
-                </div>
-                <div>
-                  <span>From peak</span>
-                  <strong id="live-drawdown">--</strong>
-                  <small id="live-vix">VIX --</small>
-                </div>
-              </div>
-              <div class="live-provenance">
-                <span id="live-source">Delayed research feed</span>
-                <span id="live-generated">Generation pending</span>
-              </div>
-            </article>
-
-            <article class="live-path-panel">
-              <div class="live-path-heading">
-                <div>
-                  <span class="section-kicker">Recent behavior</span>
-                  <h3>90-session v10 core path</h3>
-                </div>
-                <div class="chart-legend" aria-label="Live signal chart series">
-                  <span><i class="legend-swatch learned-swatch"></i>Deployed v10 core</span>
-                  <span><i class="legend-swatch rule-swatch"></i>VT10 anchor</span>
-                  <span><i class="range-swatch"></i>Seed range</span>
-                </div>
-              </div>
-              <div class="live-chart-wrap">
-                <canvas
-                  id="live-chart"
-                  role="img"
-                  aria-label="Recent deployed v10 core exposure, volatility anchor, and ensemble seed range on a zero to one-point-five times scale"
-                ></canvas>
-                <div class="live-chart-message" id="live-chart-message" role="status">
-                  Loading forward signal path
-                </div>
-              </div>
-            </article>
+          <div class="card">
+            <div class="k muted" style="font-size:0.82rem; margin-bottom:6px">Market state behind the decision</div>
+            <ul class="market-list" id="market-list">
+              <li><span>QQQ close</span><span class="v" id="m-price">&ndash;</span></li>
+              <li><span>21-day volatility (annualized)</span><span class="v" id="m-vol">&ndash;</span></li>
+              <li><span>1-month momentum</span><span class="v" id="m-mom">&ndash;</span></li>
+              <li><span>Distance from peak</span><span class="v" id="m-dd">&ndash;</span></li>
+              <li><span>VIX</span><span class="v" id="m-vix">&ndash;</span></li>
+              <li><span>Volatility anchor</span><span class="v" id="m-anchor">&ndash;</span></li>
+              <li><span>Model tilt on the anchor</span><span class="v" id="m-tilt">&ndash;</span></li>
+            </ul>
           </div>
-
-          <aside class="live-disclosure" aria-label="Live signal limitations">
-            <i data-lucide="flask-conical" aria-hidden="true"></i>
-            <p>
-              <strong>v10 macro core is the sole deployed policy.</strong>
-              Official 2010-2025 benchmark: 20.96% CAGR, 1.083 Sharpe,
-              -18.81% maximum drawdown, and 1.115 Calmar. The leveraged core is
-              capped at 1.5x with exposure above 1.0x financed at T-bill +50bp. Its current target appears only after this
-              browser's ONNX replay matches the Python reference. Research
-              provenance uses a 2023-12-31 decision-date cutoff; the final
-              training feature row is 2023-12-29 and its reward realizes on
-              2024-01-02. Research and paper-trading exposure target; not capital-deployment
-              qualified, personalized advice, or an execution order.
-            </p>
-            <a
-              href="https://github.com/linjiw/rlqqq/blob/master/results/forward_log.csv"
-            >
-              Decision log <i data-lucide="arrow-up-right" aria-hidden="true"></i>
-            </a>
-          </aside>
         </div>
       </section>
 
-      <section
-        class="content-band benchmark-band"
-        id="benchmark"
-        aria-labelledby="benchmark-title"
-        aria-busy="true"
-      >
-        <div class="content-width">
-          <div class="section-heading">
-            <div>
-              <span class="section-kicker">Official model selection</span>
-              <h2 id="benchmark-title">One winner, measured on two records</h2>
-            </div>
+      <!-- ================= HOW IT WORKS ================= -->
+      <section id="how" aria-labelledby="how-title">
+        <h2 id="how-title">How the model works</h2>
+        <p class="lede">Three moving parts, each one auditable.</p>
+        <div class="steps">
+          <div class="card step">
+            <h3>A volatility anchor sets the base</h3>
             <p>
-              The browser reads the checked benchmark artifact directly. Only
-              trained core policies were eligible to win deployment.
+              The base position targets 20% annualized volatility:
+              when markets are calm it holds more QQQ (up to 1.5&times; with
+              financed leverage), and when volatility spikes it automatically
+              de-risks. This rule alone is a strong benchmark.
             </p>
           </div>
-
-          <div class="benchmark-summary">
-            <article class="benchmark-winner-card">
-              <div class="benchmark-card-heading">
-                <span class="benchmark-status is-loading" id="benchmark-status" role="status">
-                  <i data-lucide="loader-circle" aria-hidden="true"></i>
-                  Loading benchmark
-                </span>
-                <span id="benchmark-evaluated">Evaluation pending</span>
-              </div>
-              <span class="section-kicker">Deployment winner</span>
-              <h3 id="benchmark-winner">v10 macro core</h3>
-              <p id="benchmark-rule">
-                Loading the official selection rule from the benchmark artifact.
-              </p>
-              <dl class="benchmark-winner-metrics">
-                <div><dt>CAGR</dt><dd id="benchmark-winner-cagr">--</dd></div>
-                <div><dt>Sharpe</dt><dd id="benchmark-winner-sharpe">--</dd></div>
-                <div><dt>Max DD</dt><dd id="benchmark-winner-drawdown">--</dd></div>
-                <div><dt>Calmar</dt><dd id="benchmark-winner-calmar">--</dd></div>
-              </dl>
-            </article>
-
-            <aside class="benchmark-ineligible" aria-labelledby="benchmark-ineligible-title">
-              <i data-lucide="shield-x" aria-hidden="true"></i>
-              <div>
-                <span class="section-kicker">Eligibility boundary</span>
-                <h3 id="benchmark-ineligible-title">Why composite is ineligible</h3>
-                <p id="benchmark-ineligible-copy">
-                  Composite policies are post-hoc volatility-budget overlays,
-                  not separately trained models. They remain visible only in
-                  archived research and cannot become the deployed target.
-                </p>
-              </div>
-            </aside>
+          <div class="card step">
+            <h3>Ten neural agents tilt the anchor</h3>
+            <p>
+              Ten independently trained PPO agents read 28 market features
+              (momentum, volatility, trend, volume, VIX, yield curve, bonds,
+              gold) and each votes a multiplier from 0.5&times; to 1.5&times;
+              on the anchor. The deployed decision is the average of the ten.
+            </p>
           </div>
-
-          <aside class="capital-qualification" aria-labelledby="capital-qualification-title">
-            <i data-lucide="badge-alert" aria-hidden="true"></i>
-            <div>
-              <span class="section-kicker">Capital qualification</span>
-              <h3 id="capital-qualification-title">Not qualified for capital deployment</h3>
-              <p id="benchmark-capital-reason">
-                Loading the conservative timing evidence from the official benchmark.
-              </p>
-            </div>
-            <strong id="benchmark-lag-verdict">One-close-lag check pending</strong>
-          </aside>
-
-          <div class="benchmark-tables">
-            <article class="benchmark-table-card">
-              <div>
-                <span class="section-kicker">Long record</span>
-                <h3>2010-2025 walk-forward</h3>
-                <p id="benchmark-historical-period">Loading period details</p>
-              </div>
-              <div class="benchmark-table-wrap">
-                <table class="benchmark-table">
-                  <caption class="sr-only">Official 2010 through 2025 policy benchmark</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Policy</th>
-                      <th scope="col">Eligibility</th>
-                      <th scope="col">CAGR</th>
-                      <th scope="col">Sharpe</th>
-                      <th scope="col"><span class="sr-only">One-close-lag </span>Lag Sharpe</th>
-                      <th scope="col">Max DD</th>
-                      <th scope="col">Calmar</th>
-                    </tr>
-                  </thead>
-                  <tbody id="benchmark-historical-body">
-                    <tr><td colspan="7">Loading official benchmark</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </article>
-
-            <article class="benchmark-table-card">
-              <div>
-                <span class="section-kicker">Forward sanity check</span>
-                <h3>Frozen 2026 record</h3>
-                <p id="benchmark-forward-period">Loading period details</p>
-              </div>
-              <div class="benchmark-table-wrap">
-                <table class="benchmark-table">
-                  <caption class="sr-only">Official frozen 2026 policy benchmark</caption>
-                  <thead>
-                    <tr>
-                      <th scope="col">Policy</th>
-                      <th scope="col">Eligibility</th>
-                      <th scope="col">2026 YTD</th>
-                      <th scope="col">July</th>
-                      <th scope="col">Sharpe</th>
-                      <th scope="col">Max DD</th>
-                      <th scope="col"><span class="sr-only">One-close-lag </span>Lag Sharpe</th>
-                    </tr>
-                  </thead>
-                  <tbody id="benchmark-forward-body">
-                    <tr><td colspan="7">Loading official benchmark</td></tr>
-                  </tbody>
-                </table>
-              </div>
-            </article>
+          <div class="card step">
+            <h3>What the tilt learned</h3>
+            <p>
+              Add exposure in high-volatility sell-offs when volume shows no
+              panic (buying grinding dips), trim in calm overbought markets,
+              and stand aside during liquidation events. Training used only
+              data through 2023; nothing is refit on live data.
+            </p>
           </div>
-
-          <p class="benchmark-note" id="benchmark-note">
-            The 2026 record is a spent forward sanity check, not an untouched
-            model-selection set. The July 31 signal is not included until a
-            subsequent close exists.
-          </p>
         </div>
       </section>
 
-      <div class="dashboard-width">
-        <section class="archive-intro" id="replay" aria-labelledby="archive-title">
-          <div>
-            <span class="section-kicker">Archived research · not deployed</span>
-            <h2 id="archive-title">Interactive v4 walk-forward archive</h2>
-            <p>
-              This 2010-2025 replay preserves the earlier v4 research,
-              including its post-hoc composite. None of the controls or values
-              below changes the one-model v10 core deployment above.
-            </p>
-          </div>
-          <div class="overview-facts archive-facts" aria-label="Archived replay facts">
-            <div>
-              <span>Sample</span>
-              <strong id="sample-range">2010-2025</strong>
-            </div>
-            <div>
-              <span>Evaluation</span>
-              <strong id="sample-days">3,838 OOS days</strong>
-            </div>
-            <div>
-              <span>Status</span>
-              <strong>Archived · not deployed</strong>
-            </div>
-          </div>
-        </section>
+      <!-- ================= PERFORMANCE ================= -->
+      <section id="performance" aria-labelledby="perf-title">
+        <h2 id="perf-title">Performance, 2010&ndash;2025 walk-forward</h2>
+        <p class="lede">
+          Every test year was out-of-sample: agents were trained only on data
+          before each test window, including 2&nbsp;bps costs, T-bill interest on cash,
+          and T-bill&nbsp;+50&nbsp;bp financing on leverage.
+        </p>
 
-        <section class="policy-toolbar" aria-label="Archived v4 research policy selection">
-          <div>
-            <span class="field-label">Archived v4 research view · not deployed</span>
-            <div class="segmented-control" role="group" aria-label="Policy view">
-              <button
-                class="segment is-active"
-                type="button"
-                aria-pressed="true"
-                data-policy="composite"
-              >
-                Composite candidate
-              </button>
-              <button
-                class="segment"
-                type="button"
-                aria-pressed="false"
-                data-policy="learned"
-              >
-                Learned core
-              </button>
-              <button
-                class="segment"
-                type="button"
-                aria-pressed="false"
-                data-policy="vt20"
-              >
-                Rule baseline
-              </button>
+        <div class="tiles" id="stat-tiles">
+          <div class="card tile"><div class="k">CAGR</div><div class="n" id="t-cagr">&ndash;</div><div class="c" id="t-cagr-c">vs QQQ &ndash;</div></div>
+          <div class="card tile"><div class="k">Sharpe ratio</div><div class="n" id="t-sharpe">&ndash;</div><div class="c" id="t-sharpe-c">vs QQQ &ndash;</div></div>
+          <div class="card tile"><div class="k">Max drawdown</div><div class="n" id="t-dd">&ndash;</div><div class="c" id="t-dd-c">vs QQQ &ndash;</div></div>
+          <div class="card tile"><div class="k">$10k grew to</div><div class="n" id="t-wealth">&ndash;</div><div class="c" id="t-wealth-c">vs QQQ &ndash;</div></div>
+        </div>
+
+        <div class="card chart-card" style="position:relative">
+          <div class="chart-head">
+            <h3>Growth of $10,000 (log scale)</h3>
+            <div class="legend">
+              <span class="model"><i></i>RLQQQ model</span>
+              <span class="qqq"><i></i>QQQ buy &amp; hold</span>
+              <span class="rule"><i></i>Vol-target rule</span>
             </div>
           </div>
-          <div class="policy-identity">
-            <span class="classification" id="policy-status">Post-hoc candidate</span>
-            <strong id="policy-name">Tilt x VT20</strong>
-            <p id="policy-description">
-              The learned v4 multiplier transferred onto a 20% volatility target.
-            </p>
-          </div>
-        </section>
+          <svg id="wealth-chart" class="chart" viewBox="0 0 840 340" role="img" aria-label="Wealth curves of the model, QQQ buy and hold, and the volatility-target rule from 2010 through 2025 on a log scale"></svg>
+          <div class="crosshair-tip" id="wealth-tip"></div>
+        </div>
 
-        <section class="metric-strip" aria-label="Selected archived v4 research policy performance">
-          <article class="metric">
-            <span>CAGR</span>
-            <strong id="metric-cagr">23.45%</strong>
-            <small id="metric-cagr-delta">+2.79 pp vs QQQ</small>
-          </article>
-          <article class="metric">
-            <span>Sharpe</span>
-            <strong id="metric-sharpe">1.055</strong>
-            <small id="metric-sharpe-delta">+0.108 vs QQQ</small>
-          </article>
-          <article class="metric">
-            <span>Maximum drawdown</span>
-            <strong id="metric-drawdown">-23.14%</strong>
-            <small id="metric-drawdown-delta">6.42 pp shallower</small>
-          </article>
-          <article class="metric">
-            <span>$10,000 became</span>
-            <strong id="metric-wealth">$247,508</strong>
-            <small id="metric-exposure">1.17x average exposure</small>
-          </article>
-        </section>
-
-        <section class="replay-grid" aria-label="Interactive archived v4 research replay">
-          <article class="chart-panel">
-            <div class="panel-heading">
-              <div>
-                <span class="section-kicker">Archived comparative path</span>
-                <h2 id="wealth-chart-title">Normalized wealth</h2>
-                <p>Archived v4 research; $10,000 on sampled out-of-sample days</p>
-              </div>
-              <div class="segmented-control compact" role="group" aria-label="Chart mode">
-                <button
-                  class="segment is-active"
-                  type="button"
-                  aria-pressed="true"
-                  data-chart-mode="wealth"
-                >
-                  Growth
-                </button>
-                <button
-                  class="segment"
-                  type="button"
-                  aria-pressed="false"
-                  data-chart-mode="drawdown"
-                >
-                  Drawdown
-                </button>
-              </div>
-            </div>
-
-            <div class="chart-legend" aria-label="Chart series">
-              <span><i class="legend-swatch policy-swatch"></i><b id="legend-policy">Composite</b></span>
-              <span><i class="legend-swatch qqq-swatch"></i>QQQ</span>
-              <span><i class="legend-swatch spy-swatch"></i>S&amp;P 500</span>
-              <span class="legend-note"><i class="gap-swatch"></i>Embargo gap</span>
-            </div>
-
-            <div class="wealth-chart-wrap">
-              <canvas
-                id="wealth-chart"
-                role="img"
-                aria-label="Animated normalized wealth chart comparing the selected policy, QQQ, and SPY"
-              ></canvas>
-              <div class="chart-loading" id="chart-loading" role="status">
-                Loading policy series
-              </div>
-            </div>
-
-            <div class="replay-controls">
-              <button
-                class="icon-button control-button tooltip"
-                id="play-button"
-                type="button"
-                aria-label="Play replay"
-                data-tooltip="Play replay"
-              >
-                <i data-lucide="play" aria-hidden="true"></i>
-              </button>
-              <button
-                class="icon-button control-button tooltip"
-                id="reset-button"
-                type="button"
-                aria-label="Reset replay"
-                data-tooltip="Reset replay"
-              >
-                <i data-lucide="rotate-ccw" aria-hidden="true"></i>
-              </button>
-              <label class="timeline-control">
-                <span class="sr-only">Replay date</span>
-                <input id="timeline" type="range" min="0" max="3837" value="3837">
-              </label>
-              <output id="replay-date" for="timeline">Dec 31, 2025</output>
-              <label class="speed-control">
-                <span class="sr-only">Playback speed</span>
-                <select id="speed-select" aria-label="Playback speed">
-                  <option value="0.5">0.5x</option>
-                  <option value="1" selected>1x</option>
-                  <option value="2">2x</option>
-                  <option value="4">4x</option>
-                </select>
-              </label>
-              <button class="command-button" id="video-button" type="button">
-                <i data-lucide="video" aria-hidden="true"></i>
-                Export video
-              </button>
-              <button
-                class="icon-button control-button tooltip"
-                id="image-button"
-                type="button"
-                aria-label="Export current frame as PNG"
-                data-tooltip="Export PNG"
-              >
-                <i data-lucide="image-down" aria-hidden="true"></i>
-              </button>
-            </div>
-            <div class="export-status" id="export-status" aria-live="polite"></div>
-          </article>
-
-          <aside class="decision-panel" aria-labelledby="decision-title">
-            <div class="decision-heading">
-              <div>
-                <span class="section-kicker">Decision at close</span>
-                <h2 id="decision-title">Dec 31, 2025</h2>
-              </div>
-              <span class="stance-badge" id="stance-badge">Levered</span>
-            </div>
-
-            <label class="event-select-label">
-              <span>Key moment</span>
-              <select id="event-select">
-                <option value="">Current replay date</option>
-              </select>
-            </label>
-
-            <div class="target-block">
-              <span id="target-label">Composite target</span>
-              <strong id="target-value">1.50x</strong>
-              <div class="exposure-gauge" aria-hidden="true">
-                <span id="exposure-gauge-fill"></span>
-                <i class="gauge-one-marker"></i>
-              </div>
-              <div class="gauge-labels" aria-hidden="true">
-                <span>Cash</span>
-                <span>1.0x</span>
-                <span>1.5x</span>
-              </div>
-            </div>
-
-            <dl class="decision-chain">
-              <div>
-                <dt id="base-label">20% volatility base</dt>
-                <dd id="base-value">1.50x</dd>
-              </div>
-              <div>
-                <dt id="tilt-label">Learned residual tilt</dt>
-                <dd id="tilt-value">1.19x</dd>
-              </div>
-              <div>
-                <dt>Trading state</dt>
-                <dd id="turnover-value">Hold</dd>
-              </div>
-            </dl>
-
-            <div class="market-state">
-              <div>
-                <span>QQQ close</span>
-                <strong id="state-price">$0.00</strong>
-              </div>
-              <div>
-                <span>21d volatility</span>
-                <strong id="state-volatility">0.0%</strong>
-              </div>
-              <div>
-                <span>21d momentum</span>
-                <strong id="state-momentum">0.0%</strong>
-              </div>
-              <div>
-                <span>From prior peak</span>
-                <strong id="state-drawdown">0.0%</strong>
-              </div>
-            </div>
-
-            <p class="decision-read" id="decision-read">
-              Volatility set the rule base; the learned tilt adjusted the final
-              exposure.
-            </p>
-          </aside>
-        </section>
-
-        <section class="exposure-panel" aria-labelledby="exposure-title">
-          <div class="panel-heading">
-            <div>
-              <span class="section-kicker">Archived policy anatomy</span>
-              <h2 id="exposure-title">Exposure through time</h2>
-              <p>Archived composite, non-learning VT20 rule, and v4 learned core · not deployed</p>
-            </div>
-            <div class="exposure-readout">
-              <span>Selected date</span>
-              <strong id="exposure-date">Dec 31, 2025</strong>
+        <div class="card chart-card" style="position:relative">
+          <div class="chart-head">
+            <h3>Drawdown from peak</h3>
+            <div class="legend">
+              <span class="model"><i></i>RLQQQ model</span>
+              <span class="qqq"><i></i>QQQ buy &amp; hold</span>
             </div>
           </div>
-          <div class="chart-legend" aria-label="Exposure chart series">
-            <span><i class="legend-swatch policy-swatch"></i>Composite</span>
-            <span><i class="legend-swatch rule-swatch"></i>VT20 rule</span>
-            <span><i class="legend-swatch learned-swatch"></i>Learned core</span>
-            <span><i class="full-marker"></i>Fully invested</span>
-          </div>
-          <div class="exposure-chart-wrap">
-            <canvas
-              id="exposure-chart"
-              role="img"
-              aria-label="Animated chart of policy, volatility rule, and learned model exposure"
-            ></canvas>
-          </div>
-          <div class="event-strip" id="event-strip" aria-label="Key market events"></div>
-        </section>
+          <svg id="dd-chart" class="chart" viewBox="0 0 840 240" role="img" aria-label="Drawdown from peak for the model and QQQ buy and hold"></svg>
+          <div class="crosshair-tip" id="dd-tip"></div>
+        </div>
 
-        <aside class="integrity-banner" aria-label="Research status">
-          <i data-lucide="shield-alert" aria-hidden="true"></i>
-          <div>
-            <strong>Archived observed winner — ineligible and not deployed.</strong>
-            <p>
-              The 23.45% CAGR composite was assembled after inspecting test-fold
-              behavior. Its advantage over QQQ is not statistically significant,
-              and the official core-only benchmark excludes it from deployment.
-            </p>
-          </div>
-          <span id="integrity-ci">95% CI crosses zero</span>
-        </aside>
-      </div>
-
-      <section class="content-band" id="evidence" aria-labelledby="evidence-title">
-        <div class="content-width">
-          <div class="section-heading">
-            <div>
-              <span class="section-kicker">Archived v4 evidence</span>
-              <h2 id="evidence-title">What the earlier research established</h2>
+        <div class="card chart-card" style="position:relative">
+          <div class="chart-head">
+            <h3>Annual returns</h3>
+            <div class="legend">
+              <span class="model"><i></i>RLQQQ model</span>
+              <span class="qqq"><i></i>QQQ buy &amp; hold</span>
             </div>
-            <p>
-              These results explain the archived v4 study; the official
-              deployment choice is reported in the benchmark above.
-            </p>
           </div>
-
-          <div class="policy-table-wrap">
-            <table class="policy-table">
-              <thead>
-                <tr>
-                  <th scope="col">Claim</th>
-                  <th scope="col">Policy</th>
-                  <th scope="col">CAGR</th>
-                  <th scope="col">Sharpe</th>
-                  <th scope="col">Max DD</th>
-                  <th scope="col">Status</th>
-                </tr>
-              </thead>
-              <tbody id="policy-table-body"></tbody>
+          <svg id="annual-chart" class="chart" viewBox="0 0 840 280" role="img" aria-label="Annual returns of the model versus QQQ buy and hold by calendar year"></svg>
+          <div class="crosshair-tip" id="annual-tip"></div>
+          <details class="data-table">
+            <summary>View as table</summary>
+            <table class="annual" id="annual-table">
+              <thead><tr><th>Year</th><th>RLQQQ model</th><th>QQQ</th></tr></thead>
+              <tbody></tbody>
             </table>
-          </div>
+          </details>
+        </div>
 
-          <div class="inference-row">
-            <div>
-              <span>Archived composite vs QQQ</span>
-              <strong id="inference-sharpe">+0.108 Sharpe</strong>
-              <p id="inference-sharpe-ci">95% CI -0.075 to +0.292</p>
-            </div>
-            <div>
-              <span>Archived composite vs QQQ</span>
-              <strong id="inference-cagr">+2.79 pp CAGR</strong>
-              <p id="inference-cagr-ci">95% CI -1.48 to +7.01 pp</p>
-            </div>
-            <div class="inference-verdict">
-              <span>Statistical verdict</span>
-              <strong>Not significant</strong>
-              <p>Paired stationary bootstrap, 10,000 reps</p>
-            </div>
+        <!-- stress test -->
+        <h2>The stress test the model never saw</h2>
+        <p class="lede">
+          The same recipe, trained only on pre-2000s data, dropped onto the
+          Nasdaq-100's worst decade (2000&ndash;2009: dot-com crash and the
+          financial crisis).
+        </p>
+        <div class="stress-grid">
+          <div class="card">
+            <div class="k muted" style="font-size:0.82rem">RLQQQ recipe &middot; worst drawdown</div>
+            <div class="stress-num model" id="s-model-dd">&ndash;</div>
+            <p style="margin:4px 0 0; font-size:0.88rem">with a positive return over the decade (<span id="s-model-cagr">&ndash;</span>/yr)</p>
           </div>
-
-          <div class="holdout-grid">
-            <article>
-              <div class="holdout-label">
-                <i data-lucide="check-circle-2" aria-hidden="true"></i>
-                Era holdout
-              </div>
-              <h3>NDX 2000-2009</h3>
-              <p>
-                The frozen v4 recipe preserved positive CAGR and cut an
-                index-level collapse to a -27.2% drawdown.
-              </p>
-              <dl>
-                <div><dt>Agent Sharpe</dt><dd id="era-agent-sharpe">0.16</dd></div>
-                <div><dt>NDX Sharpe</dt><dd id="era-benchmark-sharpe">-0.06</dd></div>
-                <div><dt>Delta, 95% CI</dt><dd id="era-delta">+0.37 [+0.09, +0.67]</dd></div>
-              </dl>
-            </article>
-            <article>
-              <div class="holdout-label caution">
-                <i data-lucide="x-circle" aria-hidden="true"></i>
-                Forward holdout
-              </div>
-              <h3>QQQ 2026, spent once</h3>
-              <p>
-                The preregistered blend failed its Sharpe criterion in a calm
-                bull market, while retaining the shallower drawdown.
-              </p>
-              <dl>
-                <div><dt>Blend Sharpe</dt><dd id="forward-agent-sharpe">0.67</dd></div>
-                <div><dt>QQQ Sharpe</dt><dd id="forward-benchmark-sharpe">0.89</dd></div>
-                <div><dt>Criterion</dt><dd>Fail Sharpe / pass Max DD</dd></div>
-              </dl>
-            </article>
+          <div class="card">
+            <div class="k muted" style="font-size:0.82rem">Buy &amp; hold &middot; worst drawdown</div>
+            <div class="stress-num qqq" id="s-qqq-dd">&ndash;</div>
+            <p style="margin:4px 0 0; font-size:0.88rem">losing <span id="s-qqq-cagr">&ndash;</span>/yr over the decade</p>
           </div>
         </div>
+        <p class="chart-note" id="s-sig">&nbsp;</p>
+
+        <!-- 2026 -->
+        <h2>2026 so far</h2>
+        <p class="lede" id="ytd-line">Loading&hellip;</p>
       </section>
 
-      <section class="content-band years-band" id="years" aria-labelledby="years-title">
-        <div class="content-width">
-          <div class="section-heading">
-            <div>
-              <span class="section-kicker">Archived annual decision record</span>
-              <h2 id="years-title">v4 research year by year</h2>
-            </div>
-            <p>
-              Archived returns use only sampled walk-forward days. Partial
-              years omit embargo periods at the start of a new fold.
-            </p>
-          </div>
-
-          <div class="year-table-wrap">
-            <table class="year-table">
-              <thead>
-                <tr>
-                  <th scope="col">Year</th>
-                  <th scope="col" id="year-policy-heading">Composite</th>
-                  <th scope="col">QQQ</th>
-                  <th scope="col">S&amp;P 500</th>
-                  <th scope="col">Avg exposure</th>
-                  <th scope="col">Key risk decision</th>
-                </tr>
-              </thead>
-              <tbody id="year-table-body"></tbody>
-            </table>
-          </div>
-        </div>
-      </section>
-
-      <section class="method-band" id="methodology" aria-labelledby="method-title">
-        <div class="content-width">
-          <div class="section-heading">
-            <div>
-              <span class="section-kicker">Archived v4 mechanism · not deployed</span>
-              <h2 id="method-title">How the research composite was assembled</h2>
-            </div>
-            <p>
-              This section documents the archived composite. The deployed v10
-              core above stops at the learned ensemble output and never applies
-              this post-hoc VT20 overlay.
-            </p>
-          </div>
-
-          <ol class="decision-steps">
-            <li>
-              <span>01</span>
-              <div>
-                <h3>Size the risk budget</h3>
-                <p>
-                  Trailing 21-day volatility maps to a 20% target, capped at
-                  1.5x exposure.
-                </p>
-                <code>VT20 = min(1.5, 20% / realized vol)</code>
-              </div>
-            </li>
-            <li>
-              <span>02</span>
-              <div>
-                <h3>Read the learned tilt</h3>
-                <p>
-                  Ten v4 PPO seeds are averaged. Their exposure relative to the
-                  10% target becomes a bounded multiplier.
-                </p>
-                <code>tilt = clip(agent / VT10, 0.5, 1.5)</code>
-              </div>
-            </li>
-            <li>
-              <span>03</span>
-              <div>
-                <h3>Apply and account</h3>
-                <p>
-                  The tilt modifies VT20; one-way trading costs and financing
-                  above 1.0x are deducted daily.
-                </p>
-                <code>target = min(1.5, tilt x VT20)</code>
-              </div>
-            </li>
-          </ol>
-
-          <div class="method-grid">
-            <article>
-              <h3>Evaluation design</h3>
-              <ul>
-                <li>Eight anchored test folds spanning 2010-2025.</li>
-                <li>Twenty-one trading-day embargoes between validation and test.</li>
-                <li>Ten-seed mean-exposure ensemble; no best-seed selection.</li>
-                <li>QQQ and SPY evaluated on the same 3,838 sampled dates.</li>
-                <li>Two-basis-point one-way cost and T-bill + 50 bp financing.</li>
-              </ul>
-            </article>
-            <article>
-              <h3>Known limitations</h3>
-              <ul>
-                <li>The headline composite was constructed post-hoc from test-fold series.</li>
-                <li>Its Sharpe and CAGR confidence intervals both cross zero.</li>
-                <li>There are 162 omitted embargo days; this is a stitched OOS replay.</li>
-                <li>The deployable bundle contains actor weights, not resumable PPO checkpoints.</li>
-                <li>The repository bootstrap helper mixes raw and excess Sharpe conventions.</li>
-                <li>DCA is excluded because its current accounting is not true periodic contribution accounting.</li>
-              </ul>
-            </article>
-          </div>
-
-          <div class="source-row">
-            <span>Primary records</span>
-            <a href="https://github.com/linjiw/rlqqq/blob/master/results/RESULTS.md">
-              Results ledger <i data-lucide="arrow-up-right" aria-hidden="true"></i>
-            </a>
-            <a href="https://github.com/linjiw/rlqqq/blob/master/results/live_decision_snapshot.md">
-              Policy reconstruction <i data-lucide="arrow-up-right" aria-hidden="true"></i>
-            </a>
-            <a href="https://github.com/linjiw/rlqqq/blob/master/docs/holdout_preregistration.md">
-              Preregistration <i data-lucide="arrow-up-right" aria-hidden="true"></i>
-            </a>
-          </div>
-        </div>
+      <!-- ================= FOOTNOTES ================= -->
+      <section class="footnotes">
+        <h2 style="font-size:1rem">The honest fine print</h2>
+        <p>
+          Research and paper-trading signal only — not investment advice, not an
+          execution order, and not qualified for capital deployment: under a
+          conservative one-day execution lag, a simple volatility rule matches the
+          model. Backtests assume same-close fills.
+        </p>
+        <p>
+          The 2010&ndash;2025 window was used during research; the 2000&ndash;2009 stress
+          test and the live 2026 record are the out-of-development evidence. Sharpe
+          differences vs buy &amp; hold are statistically significant only in the
+          stress decade.
+        </p>
+        <p>
+          Model weights are frozen (SHA-256 pinned); the browser recomputes every
+          decision from published raw inputs and shows it only when it matches an
+          independent Python reference bit-for-bit. Full audit trail on the
+          <a href="research.html">research console</a>; code and 2,000+ logged
+          experiments on <a href="https://github.com/linjiw/rlqqq">GitHub</a>.
+        </p>
       </section>
     </main>
 
-    <footer>
-      <div>
-        <strong>RLQQQ</strong>
-        <span>v10 macro core deployed; v4/v8 replays archived. Not investment advice.</span>
-      </div>
-      <span id="footer-as-of">Data through July 31, 2026</span>
-    </footer>
-
-    <noscript>
-      <div class="noscript-message">
-        This dashboard requires JavaScript to render the policy replay.
-      </div>
-    </noscript>
+    <script type="module" src="assets/site.js"></script>
   </body>
 </html>

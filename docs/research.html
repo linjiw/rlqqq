@@ -1,0 +1,926 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="Verified browser deployment of the RLQQQ v10 macro core, its official model benchmark, and an archived v4 research replay."
+    >
+    <meta name="theme-color" content="#f4f6f3">
+    <title>RLQQQ v10 Macro Core Deployment</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
+    <link rel="stylesheet" href="assets/dashboard.css">
+    <script defer src="assets/lucide.min.js"></script>
+    <script defer src="assets/dashboard.js"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main-content">Skip to dashboard</a>
+
+    <header class="app-header">
+      <div class="header-inner">
+        <a class="brand" href="#deployment" aria-label="RLQQQ deployment dashboard home">
+          <span class="brand-mark" aria-hidden="true">RQ</span>
+          <span>
+            <strong>RLQQQ</strong>
+            <small>One browser model</small>
+          </span>
+        </a>
+
+        <nav class="top-nav" aria-label="Dashboard sections">
+          <a href="#deployment">v10 winner</a>
+          <a href="#live">Live core</a>
+          <a href="#benchmark">Benchmark</a>
+          <a href="#replay">Archive</a>
+          <a href="#evidence">Evidence</a>
+        </nav>
+
+        <a
+          class="icon-button tooltip"
+          href="https://github.com/linjiw/rlqqq"
+          aria-label="View source repository"
+          data-tooltip="View source"
+        >
+          <i data-lucide="github" aria-hidden="true"></i>
+        </a>
+      </div>
+    </header>
+
+    <main id="main-content">
+      <section class="overview-band" id="deployment" aria-labelledby="page-title">
+        <div class="overview-copy">
+          <div class="eyebrow">
+            <span class="status-dot" aria-hidden="true"></span>
+            v10 deployment winner · one model deployed · paper only
+          </div>
+          <h1 id="page-title">v10 macro core is the browser deployment winner</h1>
+          <p>
+            The browser deploys only the frozen v10 macro (leveraged) core, selected
+            from trained core policies by the official benchmark. Post-hoc
+            composite overlays remain research artifacts and are never served
+            as the live target. This is a research and paper-trading signal,
+            not a policy qualified for capital deployment.
+          </p>
+        </div>
+        <div class="overview-facts" aria-label="Deployment facts">
+          <div>
+            <span>Deployed policy</span>
+            <strong>v10 core only</strong>
+          </div>
+          <div>
+            <span>Deployment scope</span>
+            <strong>Browser research only</strong>
+          </div>
+          <div>
+            <span>Exposure cap</span>
+            <strong>1.5x, financed at T-bill +50bp</strong>
+          </div>
+        </div>
+      </section>
+
+      <section class="live-band" id="live" aria-labelledby="live-title">
+        <div class="content-width">
+          <div class="live-heading">
+            <div>
+              <span class="section-kicker">Deployed model · latest delayed close</span>
+              <h2 id="live-title">v10 macro core browser research deployment</h2>
+              <p>One frozen model; QQQ core exposure for the next close-to-close session</p>
+            </div>
+            <div class="live-freshness">
+              <span class="live-status is-loading" id="live-status">
+                <i data-lucide="loader-circle" aria-hidden="true"></i>
+                Verifying ONNX
+              </span>
+              <time id="live-as-of">Awaiting market data</time>
+            </div>
+          </div>
+
+          <section
+            class="browser-verification is-loading"
+            id="browser-verification"
+            aria-labelledby="browser-verification-title"
+            aria-busy="true"
+          >
+            <div class="browser-verification-heading">
+              <div>
+                <span class="section-kicker">Local inference audit</span>
+                <h3 id="browser-verification-title">Browser policy verification</h3>
+              </div>
+              <strong
+                class="browser-verification-status"
+                id="browser-verification-status"
+                role="status"
+                aria-live="polite"
+              >
+                <i data-lucide="loader-circle" aria-hidden="true"></i>
+                Verifying ONNX
+              </strong>
+            </div>
+
+            <dl class="browser-parity" aria-label="Model parity checks">
+              <div>
+                <dt>Model parity</dt>
+                <dd id="verification-model">Checking version</dd>
+              </div>
+              <div>
+                <dt>Source parity</dt>
+                <dd id="verification-source">Checking Python replay</dd>
+              </div>
+              <div>
+                <dt>Hash parity</dt>
+                <dd id="verification-hash">Checking artifacts</dd>
+              </div>
+              <div>
+                <dt>Date parity</dt>
+                <dd id="verification-date">Checking latest session</dd>
+              </div>
+            </dl>
+
+            <div class="browser-votes" aria-label="Ten-seed action vote counts">
+              <span>10-seed action votes</span>
+              <div>
+                <span>Below anchor <strong id="verification-vote-low">--</strong></span>
+                <span>At anchor <strong id="verification-vote-middle">--</strong></span>
+                <span>Above anchor <strong id="verification-vote-high">--</strong></span>
+                <span class="browser-vote-total" id="verification-vote-total">-- / 10</span>
+              </div>
+            </div>
+
+            <p class="browser-verification-detail" id="browser-verification-detail">
+              Loading the frozen model and replaying its Python reference in this browser.
+              Current exposure remains withheld until every check passes.
+            </p>
+          </section>
+
+          <div class="live-grid" id="live-grid" aria-busy="true">
+            <article class="live-signal-panel">
+              <div class="live-panel-label">
+                <span>Deployed v10 core</span>
+                <span class="stance-badge is-defensive" id="live-stance">--</span>
+              </div>
+              <div class="live-target">
+                <strong id="live-learned-target">--</strong>
+                <span id="live-posture">Exposure withheld pending verification</span>
+              </div>
+              <div
+                class="live-gauge"
+                id="live-gauge"
+                role="img"
+                aria-label="Current v10 core exposure on a zero to one-point-five times scale"
+              >
+                <span id="live-gauge-fill"></span>
+                <i id="live-gauge-range"></i>
+                <b aria-hidden="true"></b>
+              </div>
+              <div class="gauge-labels" aria-hidden="true">
+                <span>Cash</span>
+                <span>0.75x</span>
+                <span>1.5x</span>
+              </div>
+              <dl class="live-decision-chain">
+                <div>
+                  <dt>Volatility anchor</dt>
+                  <dd id="live-vt10">--</dd>
+                </div>
+                <div>
+                  <dt>Learned residual</dt>
+                  <dd id="live-tilt">--</dd>
+                </div>
+                <div>
+                  <dt>Seed range</dt>
+                  <dd id="live-seed-range">--</dd>
+                </div>
+              </dl>
+              <p class="live-explanation" id="live-explanation">
+                Browser verification must pass before the current exposure is shown.
+              </p>
+            </article>
+
+            <article class="live-market-panel">
+              <div class="live-panel-label">
+                <span>Market state</span>
+                <strong>QQQ</strong>
+              </div>
+              <div class="live-market-grid">
+                <div>
+                  <span>Adjusted close</span>
+                  <strong id="live-price">--</strong>
+                  <small id="live-daily-change">--</small>
+                </div>
+                <div>
+                  <span>21d volatility</span>
+                  <strong id="live-volatility">--</strong>
+                  <small>Annualized</small>
+                </div>
+                <div>
+                  <span>21d momentum</span>
+                  <strong id="live-momentum">--</strong>
+                  <small>Close to close</small>
+                </div>
+                <div>
+                  <span>From peak</span>
+                  <strong id="live-drawdown">--</strong>
+                  <small id="live-vix">VIX --</small>
+                </div>
+              </div>
+              <div class="live-provenance">
+                <span id="live-source">Delayed research feed</span>
+                <span id="live-generated">Generation pending</span>
+              </div>
+            </article>
+
+            <article class="live-path-panel">
+              <div class="live-path-heading">
+                <div>
+                  <span class="section-kicker">Recent behavior</span>
+                  <h3>90-session v10 core path</h3>
+                </div>
+                <div class="chart-legend" aria-label="Live signal chart series">
+                  <span><i class="legend-swatch learned-swatch"></i>Deployed v10 core</span>
+                  <span><i class="legend-swatch rule-swatch"></i>VT10 anchor</span>
+                  <span><i class="range-swatch"></i>Seed range</span>
+                </div>
+              </div>
+              <div class="live-chart-wrap">
+                <canvas
+                  id="live-chart"
+                  role="img"
+                  aria-label="Recent deployed v10 core exposure, volatility anchor, and ensemble seed range on a zero to one-point-five times scale"
+                ></canvas>
+                <div class="live-chart-message" id="live-chart-message" role="status">
+                  Loading forward signal path
+                </div>
+              </div>
+            </article>
+          </div>
+
+          <aside class="live-disclosure" aria-label="Live signal limitations">
+            <i data-lucide="flask-conical" aria-hidden="true"></i>
+            <p>
+              <strong>v10 macro core is the sole deployed policy.</strong>
+              Official 2010-2025 benchmark: 20.96% CAGR, 1.083 Sharpe,
+              -18.81% maximum drawdown, and 1.115 Calmar. The leveraged core is
+              capped at 1.5x with exposure above 1.0x financed at T-bill +50bp. Its current target appears only after this
+              browser's ONNX replay matches the Python reference. Research
+              provenance uses a 2023-12-31 decision-date cutoff; the final
+              training feature row is 2023-12-29 and its reward realizes on
+              2024-01-02. Research and paper-trading exposure target; not capital-deployment
+              qualified, personalized advice, or an execution order.
+            </p>
+            <a
+              href="https://github.com/linjiw/rlqqq/blob/master/results/forward_log.csv"
+            >
+              Decision log <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+            </a>
+          </aside>
+        </div>
+      </section>
+
+      <section
+        class="content-band benchmark-band"
+        id="benchmark"
+        aria-labelledby="benchmark-title"
+        aria-busy="true"
+      >
+        <div class="content-width">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">Official model selection</span>
+              <h2 id="benchmark-title">One winner, measured on two records</h2>
+            </div>
+            <p>
+              The browser reads the checked benchmark artifact directly. Only
+              trained core policies were eligible to win deployment.
+            </p>
+          </div>
+
+          <div class="benchmark-summary">
+            <article class="benchmark-winner-card">
+              <div class="benchmark-card-heading">
+                <span class="benchmark-status is-loading" id="benchmark-status" role="status">
+                  <i data-lucide="loader-circle" aria-hidden="true"></i>
+                  Loading benchmark
+                </span>
+                <span id="benchmark-evaluated">Evaluation pending</span>
+              </div>
+              <span class="section-kicker">Deployment winner</span>
+              <h3 id="benchmark-winner">v10 macro core</h3>
+              <p id="benchmark-rule">
+                Loading the official selection rule from the benchmark artifact.
+              </p>
+              <dl class="benchmark-winner-metrics">
+                <div><dt>CAGR</dt><dd id="benchmark-winner-cagr">--</dd></div>
+                <div><dt>Sharpe</dt><dd id="benchmark-winner-sharpe">--</dd></div>
+                <div><dt>Max DD</dt><dd id="benchmark-winner-drawdown">--</dd></div>
+                <div><dt>Calmar</dt><dd id="benchmark-winner-calmar">--</dd></div>
+              </dl>
+            </article>
+
+            <aside class="benchmark-ineligible" aria-labelledby="benchmark-ineligible-title">
+              <i data-lucide="shield-x" aria-hidden="true"></i>
+              <div>
+                <span class="section-kicker">Eligibility boundary</span>
+                <h3 id="benchmark-ineligible-title">Why composite is ineligible</h3>
+                <p id="benchmark-ineligible-copy">
+                  Composite policies are post-hoc volatility-budget overlays,
+                  not separately trained models. They remain visible only in
+                  archived research and cannot become the deployed target.
+                </p>
+              </div>
+            </aside>
+          </div>
+
+          <aside class="capital-qualification" aria-labelledby="capital-qualification-title">
+            <i data-lucide="badge-alert" aria-hidden="true"></i>
+            <div>
+              <span class="section-kicker">Capital qualification</span>
+              <h3 id="capital-qualification-title">Not qualified for capital deployment</h3>
+              <p id="benchmark-capital-reason">
+                Loading the conservative timing evidence from the official benchmark.
+              </p>
+            </div>
+            <strong id="benchmark-lag-verdict">One-close-lag check pending</strong>
+          </aside>
+
+          <div class="benchmark-tables">
+            <article class="benchmark-table-card">
+              <div>
+                <span class="section-kicker">Long record</span>
+                <h3>2010-2025 walk-forward</h3>
+                <p id="benchmark-historical-period">Loading period details</p>
+              </div>
+              <div class="benchmark-table-wrap">
+                <table class="benchmark-table">
+                  <caption class="sr-only">Official 2010 through 2025 policy benchmark</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Policy</th>
+                      <th scope="col">Eligibility</th>
+                      <th scope="col">CAGR</th>
+                      <th scope="col">Sharpe</th>
+                      <th scope="col"><span class="sr-only">One-close-lag </span>Lag Sharpe</th>
+                      <th scope="col">Max DD</th>
+                      <th scope="col">Calmar</th>
+                    </tr>
+                  </thead>
+                  <tbody id="benchmark-historical-body">
+                    <tr><td colspan="7">Loading official benchmark</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </article>
+
+            <article class="benchmark-table-card">
+              <div>
+                <span class="section-kicker">Forward sanity check</span>
+                <h3>Frozen 2026 record</h3>
+                <p id="benchmark-forward-period">Loading period details</p>
+              </div>
+              <div class="benchmark-table-wrap">
+                <table class="benchmark-table">
+                  <caption class="sr-only">Official frozen 2026 policy benchmark</caption>
+                  <thead>
+                    <tr>
+                      <th scope="col">Policy</th>
+                      <th scope="col">Eligibility</th>
+                      <th scope="col">2026 YTD</th>
+                      <th scope="col">July</th>
+                      <th scope="col">Sharpe</th>
+                      <th scope="col">Max DD</th>
+                      <th scope="col"><span class="sr-only">One-close-lag </span>Lag Sharpe</th>
+                    </tr>
+                  </thead>
+                  <tbody id="benchmark-forward-body">
+                    <tr><td colspan="7">Loading official benchmark</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </article>
+          </div>
+
+          <p class="benchmark-note" id="benchmark-note">
+            The 2026 record is a spent forward sanity check, not an untouched
+            model-selection set. The July 31 signal is not included until a
+            subsequent close exists.
+          </p>
+        </div>
+      </section>
+
+      <div class="dashboard-width">
+        <section class="archive-intro" id="replay" aria-labelledby="archive-title">
+          <div>
+            <span class="section-kicker">Archived research · not deployed</span>
+            <h2 id="archive-title">Interactive v4 walk-forward archive</h2>
+            <p>
+              This 2010-2025 replay preserves the earlier v4 research,
+              including its post-hoc composite. None of the controls or values
+              below changes the one-model v10 core deployment above.
+            </p>
+          </div>
+          <div class="overview-facts archive-facts" aria-label="Archived replay facts">
+            <div>
+              <span>Sample</span>
+              <strong id="sample-range">2010-2025</strong>
+            </div>
+            <div>
+              <span>Evaluation</span>
+              <strong id="sample-days">3,838 OOS days</strong>
+            </div>
+            <div>
+              <span>Status</span>
+              <strong>Archived · not deployed</strong>
+            </div>
+          </div>
+        </section>
+
+        <section class="policy-toolbar" aria-label="Archived v4 research policy selection">
+          <div>
+            <span class="field-label">Archived v4 research view · not deployed</span>
+            <div class="segmented-control" role="group" aria-label="Policy view">
+              <button
+                class="segment is-active"
+                type="button"
+                aria-pressed="true"
+                data-policy="composite"
+              >
+                Composite candidate
+              </button>
+              <button
+                class="segment"
+                type="button"
+                aria-pressed="false"
+                data-policy="learned"
+              >
+                Learned core
+              </button>
+              <button
+                class="segment"
+                type="button"
+                aria-pressed="false"
+                data-policy="vt20"
+              >
+                Rule baseline
+              </button>
+            </div>
+          </div>
+          <div class="policy-identity">
+            <span class="classification" id="policy-status">Post-hoc candidate</span>
+            <strong id="policy-name">Tilt x VT20</strong>
+            <p id="policy-description">
+              The learned v4 multiplier transferred onto a 20% volatility target.
+            </p>
+          </div>
+        </section>
+
+        <section class="metric-strip" aria-label="Selected archived v4 research policy performance">
+          <article class="metric">
+            <span>CAGR</span>
+            <strong id="metric-cagr">23.45%</strong>
+            <small id="metric-cagr-delta">+2.79 pp vs QQQ</small>
+          </article>
+          <article class="metric">
+            <span>Sharpe</span>
+            <strong id="metric-sharpe">1.055</strong>
+            <small id="metric-sharpe-delta">+0.108 vs QQQ</small>
+          </article>
+          <article class="metric">
+            <span>Maximum drawdown</span>
+            <strong id="metric-drawdown">-23.14%</strong>
+            <small id="metric-drawdown-delta">6.42 pp shallower</small>
+          </article>
+          <article class="metric">
+            <span>$10,000 became</span>
+            <strong id="metric-wealth">$247,508</strong>
+            <small id="metric-exposure">1.17x average exposure</small>
+          </article>
+        </section>
+
+        <section class="replay-grid" aria-label="Interactive archived v4 research replay">
+          <article class="chart-panel">
+            <div class="panel-heading">
+              <div>
+                <span class="section-kicker">Archived comparative path</span>
+                <h2 id="wealth-chart-title">Normalized wealth</h2>
+                <p>Archived v4 research; $10,000 on sampled out-of-sample days</p>
+              </div>
+              <div class="segmented-control compact" role="group" aria-label="Chart mode">
+                <button
+                  class="segment is-active"
+                  type="button"
+                  aria-pressed="true"
+                  data-chart-mode="wealth"
+                >
+                  Growth
+                </button>
+                <button
+                  class="segment"
+                  type="button"
+                  aria-pressed="false"
+                  data-chart-mode="drawdown"
+                >
+                  Drawdown
+                </button>
+              </div>
+            </div>
+
+            <div class="chart-legend" aria-label="Chart series">
+              <span><i class="legend-swatch policy-swatch"></i><b id="legend-policy">Composite</b></span>
+              <span><i class="legend-swatch qqq-swatch"></i>QQQ</span>
+              <span><i class="legend-swatch spy-swatch"></i>S&amp;P 500</span>
+              <span class="legend-note"><i class="gap-swatch"></i>Embargo gap</span>
+            </div>
+
+            <div class="wealth-chart-wrap">
+              <canvas
+                id="wealth-chart"
+                role="img"
+                aria-label="Animated normalized wealth chart comparing the selected policy, QQQ, and SPY"
+              ></canvas>
+              <div class="chart-loading" id="chart-loading" role="status">
+                Loading policy series
+              </div>
+            </div>
+
+            <div class="replay-controls">
+              <button
+                class="icon-button control-button tooltip"
+                id="play-button"
+                type="button"
+                aria-label="Play replay"
+                data-tooltip="Play replay"
+              >
+                <i data-lucide="play" aria-hidden="true"></i>
+              </button>
+              <button
+                class="icon-button control-button tooltip"
+                id="reset-button"
+                type="button"
+                aria-label="Reset replay"
+                data-tooltip="Reset replay"
+              >
+                <i data-lucide="rotate-ccw" aria-hidden="true"></i>
+              </button>
+              <label class="timeline-control">
+                <span class="sr-only">Replay date</span>
+                <input id="timeline" type="range" min="0" max="3837" value="3837">
+              </label>
+              <output id="replay-date" for="timeline">Dec 31, 2025</output>
+              <label class="speed-control">
+                <span class="sr-only">Playback speed</span>
+                <select id="speed-select" aria-label="Playback speed">
+                  <option value="0.5">0.5x</option>
+                  <option value="1" selected>1x</option>
+                  <option value="2">2x</option>
+                  <option value="4">4x</option>
+                </select>
+              </label>
+              <button class="command-button" id="video-button" type="button">
+                <i data-lucide="video" aria-hidden="true"></i>
+                Export video
+              </button>
+              <button
+                class="icon-button control-button tooltip"
+                id="image-button"
+                type="button"
+                aria-label="Export current frame as PNG"
+                data-tooltip="Export PNG"
+              >
+                <i data-lucide="image-down" aria-hidden="true"></i>
+              </button>
+            </div>
+            <div class="export-status" id="export-status" aria-live="polite"></div>
+          </article>
+
+          <aside class="decision-panel" aria-labelledby="decision-title">
+            <div class="decision-heading">
+              <div>
+                <span class="section-kicker">Decision at close</span>
+                <h2 id="decision-title">Dec 31, 2025</h2>
+              </div>
+              <span class="stance-badge" id="stance-badge">Levered</span>
+            </div>
+
+            <label class="event-select-label">
+              <span>Key moment</span>
+              <select id="event-select">
+                <option value="">Current replay date</option>
+              </select>
+            </label>
+
+            <div class="target-block">
+              <span id="target-label">Composite target</span>
+              <strong id="target-value">1.50x</strong>
+              <div class="exposure-gauge" aria-hidden="true">
+                <span id="exposure-gauge-fill"></span>
+                <i class="gauge-one-marker"></i>
+              </div>
+              <div class="gauge-labels" aria-hidden="true">
+                <span>Cash</span>
+                <span>1.0x</span>
+                <span>1.5x</span>
+              </div>
+            </div>
+
+            <dl class="decision-chain">
+              <div>
+                <dt id="base-label">20% volatility base</dt>
+                <dd id="base-value">1.50x</dd>
+              </div>
+              <div>
+                <dt id="tilt-label">Learned residual tilt</dt>
+                <dd id="tilt-value">1.19x</dd>
+              </div>
+              <div>
+                <dt>Trading state</dt>
+                <dd id="turnover-value">Hold</dd>
+              </div>
+            </dl>
+
+            <div class="market-state">
+              <div>
+                <span>QQQ close</span>
+                <strong id="state-price">$0.00</strong>
+              </div>
+              <div>
+                <span>21d volatility</span>
+                <strong id="state-volatility">0.0%</strong>
+              </div>
+              <div>
+                <span>21d momentum</span>
+                <strong id="state-momentum">0.0%</strong>
+              </div>
+              <div>
+                <span>From prior peak</span>
+                <strong id="state-drawdown">0.0%</strong>
+              </div>
+            </div>
+
+            <p class="decision-read" id="decision-read">
+              Volatility set the rule base; the learned tilt adjusted the final
+              exposure.
+            </p>
+          </aside>
+        </section>
+
+        <section class="exposure-panel" aria-labelledby="exposure-title">
+          <div class="panel-heading">
+            <div>
+              <span class="section-kicker">Archived policy anatomy</span>
+              <h2 id="exposure-title">Exposure through time</h2>
+              <p>Archived composite, non-learning VT20 rule, and v4 learned core · not deployed</p>
+            </div>
+            <div class="exposure-readout">
+              <span>Selected date</span>
+              <strong id="exposure-date">Dec 31, 2025</strong>
+            </div>
+          </div>
+          <div class="chart-legend" aria-label="Exposure chart series">
+            <span><i class="legend-swatch policy-swatch"></i>Composite</span>
+            <span><i class="legend-swatch rule-swatch"></i>VT20 rule</span>
+            <span><i class="legend-swatch learned-swatch"></i>Learned core</span>
+            <span><i class="full-marker"></i>Fully invested</span>
+          </div>
+          <div class="exposure-chart-wrap">
+            <canvas
+              id="exposure-chart"
+              role="img"
+              aria-label="Animated chart of policy, volatility rule, and learned model exposure"
+            ></canvas>
+          </div>
+          <div class="event-strip" id="event-strip" aria-label="Key market events"></div>
+        </section>
+
+        <aside class="integrity-banner" aria-label="Research status">
+          <i data-lucide="shield-alert" aria-hidden="true"></i>
+          <div>
+            <strong>Archived observed winner — ineligible and not deployed.</strong>
+            <p>
+              The 23.45% CAGR composite was assembled after inspecting test-fold
+              behavior. Its advantage over QQQ is not statistically significant,
+              and the official core-only benchmark excludes it from deployment.
+            </p>
+          </div>
+          <span id="integrity-ci">95% CI crosses zero</span>
+        </aside>
+      </div>
+
+      <section class="content-band" id="evidence" aria-labelledby="evidence-title">
+        <div class="content-width">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">Archived v4 evidence</span>
+              <h2 id="evidence-title">What the earlier research established</h2>
+            </div>
+            <p>
+              These results explain the archived v4 study; the official
+              deployment choice is reported in the benchmark above.
+            </p>
+          </div>
+
+          <div class="policy-table-wrap">
+            <table class="policy-table">
+              <thead>
+                <tr>
+                  <th scope="col">Claim</th>
+                  <th scope="col">Policy</th>
+                  <th scope="col">CAGR</th>
+                  <th scope="col">Sharpe</th>
+                  <th scope="col">Max DD</th>
+                  <th scope="col">Status</th>
+                </tr>
+              </thead>
+              <tbody id="policy-table-body"></tbody>
+            </table>
+          </div>
+
+          <div class="inference-row">
+            <div>
+              <span>Archived composite vs QQQ</span>
+              <strong id="inference-sharpe">+0.108 Sharpe</strong>
+              <p id="inference-sharpe-ci">95% CI -0.075 to +0.292</p>
+            </div>
+            <div>
+              <span>Archived composite vs QQQ</span>
+              <strong id="inference-cagr">+2.79 pp CAGR</strong>
+              <p id="inference-cagr-ci">95% CI -1.48 to +7.01 pp</p>
+            </div>
+            <div class="inference-verdict">
+              <span>Statistical verdict</span>
+              <strong>Not significant</strong>
+              <p>Paired stationary bootstrap, 10,000 reps</p>
+            </div>
+          </div>
+
+          <div class="holdout-grid">
+            <article>
+              <div class="holdout-label">
+                <i data-lucide="check-circle-2" aria-hidden="true"></i>
+                Era holdout
+              </div>
+              <h3>NDX 2000-2009</h3>
+              <p>
+                The frozen v4 recipe preserved positive CAGR and cut an
+                index-level collapse to a -27.2% drawdown.
+              </p>
+              <dl>
+                <div><dt>Agent Sharpe</dt><dd id="era-agent-sharpe">0.16</dd></div>
+                <div><dt>NDX Sharpe</dt><dd id="era-benchmark-sharpe">-0.06</dd></div>
+                <div><dt>Delta, 95% CI</dt><dd id="era-delta">+0.37 [+0.09, +0.67]</dd></div>
+              </dl>
+            </article>
+            <article>
+              <div class="holdout-label caution">
+                <i data-lucide="x-circle" aria-hidden="true"></i>
+                Forward holdout
+              </div>
+              <h3>QQQ 2026, spent once</h3>
+              <p>
+                The preregistered blend failed its Sharpe criterion in a calm
+                bull market, while retaining the shallower drawdown.
+              </p>
+              <dl>
+                <div><dt>Blend Sharpe</dt><dd id="forward-agent-sharpe">0.67</dd></div>
+                <div><dt>QQQ Sharpe</dt><dd id="forward-benchmark-sharpe">0.89</dd></div>
+                <div><dt>Criterion</dt><dd>Fail Sharpe / pass Max DD</dd></div>
+              </dl>
+            </article>
+          </div>
+        </div>
+      </section>
+
+      <section class="content-band years-band" id="years" aria-labelledby="years-title">
+        <div class="content-width">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">Archived annual decision record</span>
+              <h2 id="years-title">v4 research year by year</h2>
+            </div>
+            <p>
+              Archived returns use only sampled walk-forward days. Partial
+              years omit embargo periods at the start of a new fold.
+            </p>
+          </div>
+
+          <div class="year-table-wrap">
+            <table class="year-table">
+              <thead>
+                <tr>
+                  <th scope="col">Year</th>
+                  <th scope="col" id="year-policy-heading">Composite</th>
+                  <th scope="col">QQQ</th>
+                  <th scope="col">S&amp;P 500</th>
+                  <th scope="col">Avg exposure</th>
+                  <th scope="col">Key risk decision</th>
+                </tr>
+              </thead>
+              <tbody id="year-table-body"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <section class="method-band" id="methodology" aria-labelledby="method-title">
+        <div class="content-width">
+          <div class="section-heading">
+            <div>
+              <span class="section-kicker">Archived v4 mechanism · not deployed</span>
+              <h2 id="method-title">How the research composite was assembled</h2>
+            </div>
+            <p>
+              This section documents the archived composite. The deployed v10
+              core above stops at the learned ensemble output and never applies
+              this post-hoc VT20 overlay.
+            </p>
+          </div>
+
+          <ol class="decision-steps">
+            <li>
+              <span>01</span>
+              <div>
+                <h3>Size the risk budget</h3>
+                <p>
+                  Trailing 21-day volatility maps to a 20% target, capped at
+                  1.5x exposure.
+                </p>
+                <code>VT20 = min(1.5, 20% / realized vol)</code>
+              </div>
+            </li>
+            <li>
+              <span>02</span>
+              <div>
+                <h3>Read the learned tilt</h3>
+                <p>
+                  Ten v4 PPO seeds are averaged. Their exposure relative to the
+                  10% target becomes a bounded multiplier.
+                </p>
+                <code>tilt = clip(agent / VT10, 0.5, 1.5)</code>
+              </div>
+            </li>
+            <li>
+              <span>03</span>
+              <div>
+                <h3>Apply and account</h3>
+                <p>
+                  The tilt modifies VT20; one-way trading costs and financing
+                  above 1.0x are deducted daily.
+                </p>
+                <code>target = min(1.5, tilt x VT20)</code>
+              </div>
+            </li>
+          </ol>
+
+          <div class="method-grid">
+            <article>
+              <h3>Evaluation design</h3>
+              <ul>
+                <li>Eight anchored test folds spanning 2010-2025.</li>
+                <li>Twenty-one trading-day embargoes between validation and test.</li>
+                <li>Ten-seed mean-exposure ensemble; no best-seed selection.</li>
+                <li>QQQ and SPY evaluated on the same 3,838 sampled dates.</li>
+                <li>Two-basis-point one-way cost and T-bill + 50 bp financing.</li>
+              </ul>
+            </article>
+            <article>
+              <h3>Known limitations</h3>
+              <ul>
+                <li>The headline composite was constructed post-hoc from test-fold series.</li>
+                <li>Its Sharpe and CAGR confidence intervals both cross zero.</li>
+                <li>There are 162 omitted embargo days; this is a stitched OOS replay.</li>
+                <li>The deployable bundle contains actor weights, not resumable PPO checkpoints.</li>
+                <li>The repository bootstrap helper mixes raw and excess Sharpe conventions.</li>
+                <li>DCA is excluded because its current accounting is not true periodic contribution accounting.</li>
+              </ul>
+            </article>
+          </div>
+
+          <div class="source-row">
+            <span>Primary records</span>
+            <a href="https://github.com/linjiw/rlqqq/blob/master/results/RESULTS.md">
+              Results ledger <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+            </a>
+            <a href="https://github.com/linjiw/rlqqq/blob/master/results/live_decision_snapshot.md">
+              Policy reconstruction <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+            </a>
+            <a href="https://github.com/linjiw/rlqqq/blob/master/docs/holdout_preregistration.md">
+              Preregistration <i data-lucide="arrow-up-right" aria-hidden="true"></i>
+            </a>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer>
+      <div>
+        <strong>RLQQQ</strong>
+        <span>v10 macro core deployed; v4/v8 replays archived. Not investment advice.</span>
+      </div>
+      <span id="footer-as-of">Data through July 31, 2026</span>
+    </footer>
+
+    <noscript>
+      <div class="noscript-message">
+        This dashboard requires JavaScript to render the policy replay.
+      </div>
+    </noscript>
+  </body>
+</html>

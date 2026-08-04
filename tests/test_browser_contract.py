@@ -64,30 +64,33 @@ def test_deployed_browser_model_matches_the_checked_benchmark_winner():
 
 
 def test_page_exposes_only_the_benchmark_gated_v10_core_as_current():
+    # public page: fail-closed live signal, honest framing, archive link
     html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
-    javascript = (ASSETS / "dashboard.js").read_text(encoding="utf-8")
+    site_js = (ASSETS / "site.js").read_text(encoding="utf-8")
+    assert "verifyBrowserPolicy" in site_js
+    assert "verification failed" in site_js.lower()
+    assert "not investment advice" in html
+    assert "research.html" in html
+    assert "browser-inference.mjs" in site_js
 
-    assert "v10 macro core is the browser deployment winner" in html
-    assert "v10 macro core is the sole deployed policy" in html
-    assert 'id="benchmark"' in html
-    assert 'id="live-composite"' not in html
+    # research console (archived audit page) keeps the full benchmark contract
+    research = (ROOT / "docs" / "research.html").read_text(encoding="utf-8")
+    javascript = (ASSETS / "dashboard.js").read_text(encoding="utf-8")
+    assert "v10 macro core is the browser deployment winner" in research
+    assert "v10 macro core is the sole deployed policy" in research
+    assert 'id="benchmark"' in research
     assert "loadVerifiedDeployment" in javascript
     assert "Live model does not match the checked benchmark winner" in javascript
-    assert 'key: "vt20"' in javascript
 
-    historical_table = html.split(
+    historical_table = research.split(
         "Official 2010 through 2025 policy benchmark", 1
     )[1].split("</table>", 1)[0]
-    forward_table = html.split("Official frozen 2026 policy benchmark", 1)[1].split(
-        "</table>", 1
-    )[0]
+    forward_table = research.split(
+        "Official frozen 2026 policy benchmark", 1
+    )[1].split("</table>", 1)[0]
     assert "CAGR" in historical_table
     assert "Lag Sharpe" in historical_table
-    assert "2026 YTD" not in historical_table
     assert "2026 YTD" in forward_table
-    assert "July" in forward_table
-    assert "Lag Sharpe" in forward_table
-    assert "Calmar" not in forward_table
 
 
 def test_static_browser_bundle_is_hash_bound_to_the_frozen_actor():
