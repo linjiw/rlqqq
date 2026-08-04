@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
-  "asOf": "2026-07-31",
-  "generatedAt": "2026-08-04T08:51:48Z",
+  "asOf": "2026-08-03",
+  "generatedAt": "2026-08-04T12:08:16Z",
   "stale": false,
   "source": {
     "provider": "Yahoo Finance via yfinance",
@@ -18,30 +18,29 @@
     "decisionTiming": "After close for the next close-to-close session"
   },
   "market": {
-    "price": 687.99,
-    "dailyChange": 0.006496,
-    "realizedVol21": 0.23811,
-    "momentum21": -0.051271,
-    "drawdown": -0.076946,
-    "volumeRatio21": 1.242657,
-    "vix": 15.99
+    "price": 700.07,
+    "dailyChange": 0.017558,
+    "realizedVol21": 0.241111,
+    "momentum21": -0.017583,
+    "drawdown": -0.060738,
+    "volumeRatio21": 1.109865,
+    "vix": 15.86
   },
   "signal": {
-    "vt10Exposure": 0.83838,
-    "learnedMean": 0.8803,
-    "learnedMin": 0.41919,
-    "learnedMax": 1.25757,
-    "tiltMultiplier": 1.05,
+    "vt10Exposure": 0.82772,
+    "learnedMean": 0.80703,
+    "learnedMin": 0.62079,
+    "learnedMax": 1.24159,
+    "tiltMultiplier": 0.975,
     "vt20Exposure": 1.5,
-    "compositeExposure": 1.5,
+    "compositeExposure": 1.4625,
     "stance": "Reduced risk",
-    "actorStateSha256": "8f54b4ad19012def1f04654f5ea6be747ee4d3b6733f496e7510e0666d960c51",
+    "actorStateSha256": "d02c1c2a80c3725ea033a4bb4e3c32b1ff862b23f462bdd6acfeb94edb55e550",
     "researchPosture": "Risk budget below full exposure",
-    "explanation": "Trailing volatility set the VT10 anchor at 0.84x. The current ten-seed ensemble kept the volatility anchor nearly unchanged with a 1.05x residual, producing 0.88x."
+    "explanation": "Trailing volatility set the VT10 anchor at 0.83x. The current ten-seed ensemble kept the volatility anchor nearly unchanged with a 0.97x residual, producing 0.81x."
   },
   "history": {
     "dates": [
-      "2026-03-24",
       "2026-03-25",
       "2026-03-26",
       "2026-03-27",
@@ -130,10 +129,10 @@
       "2026-07-28",
       "2026-07-29",
       "2026-07-30",
-      "2026-07-31"
+      "2026-07-31",
+      "2026-08-03"
     ],
     "price": [
-      583.3389,
       587.1747,
       573.1601,
       561.9625,
@@ -222,10 +221,10 @@
       675.49,
       661.73,
       683.55,
-      687.99
+      687.99,
+      700.07
     ],
     "vt10Exposure": [
-      1.0,
       1.0,
       1.0,
       1.0,
@@ -237,7 +236,7 @@
       0.9189,
       0.84208,
       0.83805,
-      0.83798,
+      0.83797,
       0.86189,
       0.844,
       0.83896,
@@ -314,10 +313,10 @@
       0.87513,
       0.93124,
       0.83254,
-      0.83838
+      0.83838,
+      0.82772
     ],
     "learnedMean": [
-      1.3,
       1.3,
       1.325,
       1.325,
@@ -406,15 +405,15 @@
       1.00639,
       1.16405,
       0.7701,
-      0.8803
+      0.8803,
+      0.80703
     ],
     "learnedMin": [
       1.0,
       1.0,
-      1.0,
       0.75,
       0.75,
-      0.44267,
+      0.44268,
       0.43626,
       0.45141,
       0.89622,
@@ -498,15 +497,15 @@
       0.43756,
       0.69843,
       0.41627,
-      0.41919
+      0.41919,
+      0.62079
     ],
     "learnedMax": [
       1.5,
       1.5,
       1.5,
       1.5,
-      1.5,
-      1.32802,
+      1.32803,
       1.30879,
       1.35422,
       1.34433,
@@ -590,10 +589,10 @@
       1.31269,
       1.39686,
       1.2488,
-      1.25757
+      1.25757,
+      1.24159
     ],
     "compositeExposure": [
-      1.5,
       1.5,
       1.5,
       1.5,
@@ -682,7 +681,8 @@
       1.5,
       1.5,
       1.3875,
-      1.5
+      1.5,
+      1.4625
     ]
   },
   "limitations": [
