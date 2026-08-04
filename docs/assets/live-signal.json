@@ -1,10 +1,10 @@
 {
   "schemaVersion": 1,
   "asOf": "2026-07-31",
-  "generatedAt": "2026-08-04T06:58:36Z",
+  "generatedAt": "2026-08-04T08:47:18Z",
   "stale": false,
   "source": {
-    "provider": "Yahoo Finance checked snapshot",
+    "provider": "Yahoo Finance via yfinance",
     "frequency": "Delayed end-of-day",
     "instrument": "QQQ"
   },
@@ -23,7 +23,7 @@
     "realizedVol21": 0.23811,
     "momentum21": -0.051271,
     "drawdown": -0.076946,
-    "volumeRatio21": 1.230804,
+    "volumeRatio21": 1.242657,
     "vix": 15.99
   },
   "signal": {

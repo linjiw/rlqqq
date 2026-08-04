@@ -18,7 +18,13 @@ on:
       - "tests/**"
   schedule:
     # US market close is 20:00/21:00 UTC; avoid the busy top of the hour.
+    # Evening attempt, late-evening retry (feeds publish on different
+    # clocks), and a next-morning sweep that picks up laggard yield feeds
+    # (the session validator aligns all feeds to the latest COMMON session,
+    # so early runs are safe and later runs advance the date).
     - cron: "37 22 * * 1-5"
+    - cron: "7 1 * * 2-6"
+    - cron: "7 10 * * 2-6"
   workflow_dispatch:
 
 permissions:

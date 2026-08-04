@@ -275,8 +275,13 @@ async function loadLive() {
     $("m-vix").textContent = m.vix.toFixed(1);
     $("m-anchor").textContent = fmtX(payload.signal.vt10Exposure);
     $("m-tilt").textContent = fmtX(payload.signal.tiltMultiplier);
+    const asOfDate = new Date(`${payload.asOf}T21:00:00Z`);
+    const ageDays = Math.floor((Date.now() - asOfDate.getTime()) / 86_400_000);
+    const freshness = ageDays <= 0 ? "latest completed session"
+      : ageDays <= 3 ? "auto-refreshes three times each trading day"
+      : "refresh overdue — see research console";
     $("decision-asof").textContent =
-      `As of the ${payload.asOf} close · delayed data · model ${payload.model.displayName}, frozen ${payload.model.trainCutoff}`;
+      `As of the ${payload.asOf} close · ${freshness} · model ${payload.model.displayName}, frozen ${payload.model.trainCutoff}`;
 
     // Fail-closed browser verification via the existing module.
     const mod = await import("./browser-inference.mjs");

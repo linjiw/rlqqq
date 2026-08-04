@@ -60,7 +60,9 @@ def test_deployed_browser_model_matches_the_checked_benchmark_winner():
 
     forward = benchmark["frozen2026"]
     assert forward["period"]["latestSignalScored"] is False
-    assert forward["latestUnscoredSignal"]["v10"]["asOf"] == signal["asOf"]
+    # the benchmark artifact is frozen at evaluation time; the live signal
+    # moves forward daily, so it may only be at-or-after the benchmark date
+    assert forward["latestUnscoredSignal"]["v10"]["asOf"] <= signal["asOf"]
 
 
 def test_page_exposes_only_the_benchmark_gated_v10_core_as_current():

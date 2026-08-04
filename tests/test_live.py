@@ -44,12 +44,18 @@ def test_latest_market_feeds_must_share_the_qqq_session():
     frames = load_checked_market_frames(ROOT / "data" / "raw")
     assert validate_latest_market_frames(frames) == pd.Timestamp("2026-07-31")
 
-    lagging = {**frames, "^VIX": frames["^VIX"].iloc[:-1].copy()}
-    with pytest.raises(
-        ValueError,
-        match="Market feeds do not share QQQ session 2026-07-31",
-    ):
-        validate_latest_market_frames(lagging)
+    # a feed that runs AHEAD is truncated to the common session
+    ahead = {**frames, "^VIX": frames["^VIX"].copy()}
+    extra = ahead["^VIX"].iloc[[-1]].copy()
+    extra.index = [pd.Timestamp("2026-08-03")]
+    ahead["^VIX"] = pd.concat([ahead["^VIX"], extra])
+    assert validate_latest_market_frames(ahead) == pd.Timestamp("2026-07-31")
+    assert pd.Timestamp(ahead["^VIX"].index[-1]) == pd.Timestamp("2026-07-31")
+
+    # a feed that lags moves the common session BACK for everyone
+    lagging = {k: v.copy() for k, v in frames.items()}
+    lagging["^VIX"] = lagging["^VIX"].iloc[:-1]
+    assert validate_latest_market_frames(lagging) == pd.Timestamp("2026-07-30")
 
 
 def test_online_features_exactly_match_training_snapshot():

@@ -477,17 +477,24 @@ def validate_latest_market_frames(
             raise ValueError(f"{symbol} latest close is not finite")
         latest[symbol] = date
 
-    qqq_date = latest["QQQ"]
-    lagging = {
-        symbol: str(date.date())
-        for symbol, date in latest.items()
-        if date != qqq_date
-    }
-    if lagging:
-        raise ValueError(
-            f"Market feeds do not share QQQ session {qqq_date.date()}: {lagging}"
-        )
-    return qqq_date
+    # Feeds publish on different clocks (e.g. a VIX quote can carry the next
+    # session's stamp while QQQ still ends on the prior close). The safe,
+    # causal rule is to align every feed to the LATEST COMMON completed
+    # session: truncate feeds that run ahead, and fail only when a feed is
+    # missing that common session entirely.
+    common = min(latest.values())
+    for symbol in required:
+        frame = frames[symbol]
+        truncated = frame.loc[:common]
+        if truncated.empty or pd.Timestamp(
+            truncated.index[-1]
+        ).tz_localize(None).normalize() != common:
+            raise ValueError(
+                f"{symbol} is missing the common market session {common.date()}"
+            )
+        if len(truncated) != len(frame):
+            frame.drop(frame.index[len(truncated):], inplace=True)
+    return common
 
 
 def replay_frozen_policy(
