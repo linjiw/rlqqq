@@ -1,6 +1,6 @@
 # RLQQQ v4 vs v8 deployment benchmark
 
-Evaluated 2026-08-04 at `23a1fcfd767009de995fa8fe316e71e98a88360d`.
+Evaluated 2026-08-04 at `288e4278055e8a40ca8c9861207df063a021857c`.
 
 ## Deployment decision
 

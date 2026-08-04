@@ -601,23 +601,29 @@ def select_deployment(historical: dict | None) -> dict:
         "tieCandidates": tied,
         "winnerMetrics": metrics[winner],
         "winnerEvidence": {
-            "sameCloseSharpeDeltaVsV4": float(
-                metrics["v8Core"]["sharpe"] - metrics["v4Core"]["sharpe"]
+            "sameCloseSharpeDeltaVsRunnerUp": float(
+                metrics[winner]["sharpe"]
+                - max(
+                    metrics[name]["sharpe"]
+                    for name in candidates
+                    if name != winner
+                )
             ),
             "oneCloseLagSharpeDeltaVsV4": float(
-                lagged["v8Core"]["sharpe"] - lagged["v4Core"]["sharpe"]
-            ),
-            "annualTurnoverDeltaVsV4": float(
-                metrics["v8Core"]["annualTurnover"]
-                - metrics["v4Core"]["annualTurnover"]
+                lagged[winner]["sharpe"] - lagged["v4Core"]["sharpe"]
             ),
             "oneCloseLagSharpeDeltaVsVt10": float(
-                lagged["v8Core"]["sharpe"] - lagged["vt10"]["sharpe"]
+                lagged[winner]["sharpe"] - lagged["vt10"]["sharpe"]
+            ),
+            "oneCloseLagSharpeDeltaVsRiskMatchedRule": float(
+                lagged[winner]["sharpe"]
+                - lagged["vt20" if winner == "v10Core" else "vt10"]["sharpe"]
             ),
         },
         "capitalDeploymentReason": (
-            "Under the conservative one-close lag, the simple VT10 rule has "
-            "higher Sharpe and lower turnover than either RL core."
+            "Under the conservative one-close lag, the simple volatility "
+            "rules (VT10/VT20) still edge every trained core on Sharpe with "
+            "lower turnover."
         ),
     }
 

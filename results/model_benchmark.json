@@ -8,7 +8,7 @@
   },
   "deploymentSelection": {
     "capitalDeploymentQualified": false,
-    "capitalDeploymentReason": "Under the conservative one-close lag, the simple VT10 rule has higher Sharpe and lower turnover than either RL core.",
+    "capitalDeploymentReason": "Under the conservative one-close lag, the simple volatility rules (VT10/VT20) still edge every trained core on Sharpe with lower turnover.",
     "deploymentScope": "Research and paper-trading signal; not qualified for capital deployment",
     "eligibleCandidates": [
       "v4Core",
@@ -28,10 +28,10 @@
     ],
     "winner": "v10Core",
     "winnerEvidence": {
-      "annualTurnoverDeltaVsV4": -1.6630200181333858,
-      "oneCloseLagSharpeDeltaVsV4": 0.0330917148309996,
-      "oneCloseLagSharpeDeltaVsVt10": -0.016661196587137495,
-      "sameCloseSharpeDeltaVsV4": 0.004925509822343299
+      "oneCloseLagSharpeDeltaVsRiskMatchedRule": -0.005786947883642202,
+      "oneCloseLagSharpeDeltaVsV4": 0.04324732763223338,
+      "oneCloseLagSharpeDeltaVsVt10": -0.0065055837859037124,
+      "sameCloseSharpeDeltaVsRunnerUp": 0.031140084544370117
     },
     "winnerMetrics": {
       "annualTurnover": 16.174059643523403,
@@ -59,7 +59,7 @@
   "evaluatedOn": "2026-08-04",
   "evaluationImplementation": {
     "path": "scripts/evaluate_model_benchmark.py",
-    "sha256": "dc1318955d3b4bc488746a9dfe1cef54b6cd6482348b19f1cb5fa232418c089e",
+    "sha256": "756a5ebf069f89d6d0edf491ce4e1f2d3244eb496ce9d52bae9f3846fc3ea83f",
     "sourceRevisionMeaning": "Git revision of the training recipe and checked market/model inputs; the evaluator itself is content-addressed separately."
   },
   "frozen2026": {
@@ -802,7 +802,7 @@
         },
         "python": "3.12.13"
       },
-      "trainingRecipeRevision": "23a1fcfd767009de995fa8fe316e71e98a88360d"
+      "trainingRecipeRevision": "288e4278055e8a40ca8c9861207df063a021857c"
     }
   },
   "limitations": [
@@ -818,5 +818,5 @@
     "The frozen artifact's 2023-12-31 cutoff is a decision-date cutoff: its last training feature row is 2023-12-29 and the associated final reward realizes on 2024-01-02."
   ],
   "schemaVersion": 1,
-  "sourceRevision": "23a1fcfd767009de995fa8fe316e71e98a88360d"
+  "sourceRevision": "288e4278055e8a40ca8c9861207df063a021857c"
 }

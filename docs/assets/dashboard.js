@@ -418,8 +418,9 @@
       throw new Error("Deployment winner metrics are incomplete");
     }
     if (
-      !Number.isFinite(selection.winnerEvidence?.sameCloseSharpeDeltaVsV4) ||
-      !Number.isFinite(selection.winnerEvidence?.oneCloseLagSharpeDeltaVsVt10)
+
+      !Number.isFinite(selection.winnerEvidence?.oneCloseLagSharpeDeltaVsVt10) ||
+      !Number.isFinite(selection.winnerEvidence?.sameCloseSharpeDeltaVsRunnerUp)
     ) {
       throw new Error("Deployment winner evidence is incomplete");
     }
@@ -441,10 +442,10 @@
     elements.benchmark.setAttribute("aria-busy", "false");
     elements.benchmarkStatus.className = "benchmark-status is-verified";
     elements.benchmarkStatus.innerHTML =
-      '<i data-lucide="badge-check" aria-hidden="true"></i>v8 browser winner';
+      '<i data-lucide="badge-check" aria-hidden="true"></i>v10 browser winner';
     elements.benchmarkEvaluated.textContent =
       `Evaluated ${dateFormatter.format(evaluatedDate)} · ${payload.sourceRevision.slice(0, 8)}`;
-    elements.benchmarkWinner.textContent = "v8 core · browser research";
+    elements.benchmarkWinner.textContent = "v10 macro core · browser research";
     elements.benchmarkRule.textContent = selection.rule;
     elements.benchmarkWinnerCagr.textContent = formatPercent(winner.cagr, 2);
     elements.benchmarkWinnerSharpe.textContent = winner.sharpe.toFixed(3);
@@ -453,11 +454,12 @@
     elements.benchmarkWinnerCalmar.textContent = winner.calmar.toFixed(3);
     elements.benchmarkIneligibleCopy.textContent =
       `${compositeLimitation || "Composite policies are post-hoc research overlays."} ` +
-      "The browser therefore deploys the selected v8 core output only.";
+      "The browser therefore deploys the selected v10 macro core output only.";
     elements.benchmarkCapitalReason.textContent = selection.capitalDeploymentReason;
     elements.benchmarkLagVerdict.textContent =
-      `One-close-lag Sharpe: VT10 ${historicalLag.vt10.sharpe.toFixed(3)} > ` +
-      `v8 core ${historicalLag.v8Core.sharpe.toFixed(3)}`;
+      `One-close-lag Sharpe: VT10 ${historicalLag.vt10.sharpe.toFixed(3)} / ` +
+      `VT20 ${historicalLag.vt20.sharpe.toFixed(3)} > ` +
+      `v10 core ${historicalLag.v10Core.sharpe.toFixed(3)}`;
     elements.benchmarkHistoricalPeriod.textContent =
       `${historicalPeriod.days.toLocaleString("en-US")} days · ` +
       `${historicalPeriod.folds} folds · ${historicalPeriod.seedsPerFold} seeds/fold · ` +
@@ -473,11 +475,12 @@
       "one close later as a conservative sensitivity. The 2026 record is a spent forward " +
       "sanity check, not an untouched selection set. Composite rows reproduce the archived " +
       "dashboard's continuous-VT anchor; the fold-local actor-anchor sensitivity remains in " +
-      "the machine-readable report. The short 2026 lag sensitivity reverses the core ranking " +
-      `(v4 ${payload.frozen2026.oneCloseLagSensitivity.v4Core.sharpe.toFixed(3)} vs ` +
-      `v8 ${payload.frozen2026.oneCloseLagSensitivity.v8Core.sharpe.toFixed(3)} Sharpe). ` +
+      "the machine-readable report. Short 2026 lag Sharpe: " +
+      `v10 ${payload.frozen2026.oneCloseLagSensitivity.v10Core.sharpe.toFixed(3)}, ` +
+      `v8 ${payload.frozen2026.oneCloseLagSensitivity.v8Core.sharpe.toFixed(3)}, ` +
+      `v4 ${payload.frozen2026.oneCloseLagSensitivity.v4Core.sharpe.toFixed(3)}. ` +
       `${reproducibilityLimitation || "Fresh rerun and archived headlines differ."} ` +
-      `The ${payload.frozen2026.latestUnscoredSignal.v8.asOf} target is unscored and ` +
+      `The ${payload.frozen2026.latestUnscoredSignal.v10.asOf} target is unscored and ` +
       "excluded until a subsequent close exists.";
 
     populateBenchmarkTable(
@@ -644,7 +647,7 @@
       !payload.market ||
       !payload.model?.version ||
       !payload.model?.displayName ||
-      payload.model?.featureCount !== 22 ||
+      !(Number.isInteger(payload.model?.featureCount) && payload.model.featureCount >= 22) ||
       payload.model?.ensembleSize !== 10 ||
       !/^[a-f0-9]{64}$/.test(payload.model?.artifactSha256 || "") ||
       !signal ||
@@ -717,9 +720,13 @@
     elements.verificationHash.textContent =
       `ONNX ${result.model.onnxArtifactSha256.slice(0, 12)}…`;
     elements.verificationDate.textContent = dateFormatter.format(sourceDate);
-    elements.verificationVoteLow.textContent = String(votes[0]);
-    elements.verificationVoteMiddle.textContent = String(votes[1]);
-    elements.verificationVoteHigh.textContent = String(votes[2]);
+    const middleIndex = Math.floor(votes.length / 2);
+    const lowVotes = votes.slice(0, middleIndex).reduce((sum, value) => sum + value, 0);
+    const middleVotes = votes[middleIndex];
+    const highVotes = votes.slice(middleIndex + 1).reduce((sum, value) => sum + value, 0);
+    elements.verificationVoteLow.textContent = String(lowVotes);
+    elements.verificationVoteMiddle.textContent = String(middleVotes);
+    elements.verificationVoteHigh.textContent = String(highVotes);
     elements.verificationVoteTotal.textContent = `${totalVotes} / 10`;
     elements.browserVerificationDetail.textContent =
       `ORT-Web ${result.model.runtimeVersion} WASM replayed ${checks.rowCount} sessions ` +
@@ -778,18 +785,22 @@
     elements.liveSeedRange.textContent =
       `${signal.learnedMin.toFixed(2)}-${signal.learnedMax.toFixed(2)}x`;
     const votes = state.liveVerification.voteCounts;
+    const middle = Math.floor(votes.length / 2);
+    const below = votes.slice(0, middle).reduce((sum, value) => sum + value, 0);
+    const above = votes.slice(middle + 1).reduce((sum, value) => sum + value, 0);
     elements.liveExplanation.textContent =
-      `This browser replayed the frozen ten-actor policy. VT10 set a ` +
-      `${signal.vt10Exposure.toFixed(2)}x anchor; votes were ` +
-      `${votes[0]}/${votes[1]}/${votes[2]} for the 0.5x/1.0x/1.5x residuals, ` +
+      `This browser replayed the frozen ten-actor policy. The volatility ` +
+      `anchor was ${signal.vt10Exposure.toFixed(2)}x; ${below} seeds voted ` +
+      `below the anchor, ${votes[middle]} at it, and ${above} above it, ` +
       `producing a ${signal.learnedMean.toFixed(2)}x core target.`;
 
+    const gaugeCap = 1.5;
     elements.liveGaugeFill.style.width =
-      `${clamp(signal.learnedMean, 0, 1) * 100}%`;
+      `${clamp(signal.learnedMean / gaugeCap, 0, 1) * 100}%`;
     elements.liveGaugeRange.style.left =
-      `${clamp(signal.learnedMin, 0, 1) * 100}%`;
+      `${clamp(signal.learnedMin / gaugeCap, 0, 1) * 100}%`;
     elements.liveGaugeRange.style.width =
-      `${clamp(signal.learnedMax - signal.learnedMin, 0, 1) * 100}%`;
+      `${clamp((signal.learnedMax - signal.learnedMin) / gaugeCap, 0, 1) * 100}%`;
     elements.liveGauge.setAttribute(
       "aria-label",
       `Verified learned exposure ${signal.learnedMean.toFixed(2)} times, ` +
@@ -944,13 +955,14 @@
     );
     const xAt = (index) =>
       plot.x + (index / Math.max(1, count - 1)) * plot.width;
-    const yAt = (value) => linearScale(value, [0, 1], plot);
+    const chartCap = 1.5;
+    const yAt = (value) => linearScale(value, [0, chartCap], plot);
 
     clearCanvas(context, width, height);
     drawHorizontalGrid(
       context,
       plot,
-      [0, 0.5, 1],
+      [0, 0.5, 1, 1.5],
       yAt,
       (value) => `${value.toFixed(1)}x`,
     );
