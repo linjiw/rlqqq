@@ -153,3 +153,26 @@ The v8 reference was selected after the 2026 holdout had been opened, so its
 the checked results because the historical training stack was not pinned.
 None of these outputs is personalized investment advice or an execution
 order.
+
+
+## Why the browser does not fetch market data itself
+
+Investigated 2026-08-04 for a fully serverless "browser fetches the latest
+bars" design. Verified empirically (real browser, deployed origin): none of
+the free daily-bar feeds — Yahoo chart API, Cboe delayed-quote CDN, Stooq
+CSV — send `Access-Control-Allow-Origin`, so every in-page `fetch` is blocked
+by CORS before any data arrives. The only workarounds are a proxy we would
+have to run (a server) or an untrusted third-party CORS proxy (a silent
+data-integrity hole in a fail-closed system). Both rejected.
+
+The serverless answer is the scheduled GitHub Actions refresh, hardened:
+
+1. `validate_latest_market_frames` aligns all feeds to the **latest common
+   completed session** instead of failing when feeds publish on different
+   clocks (the actual cause of the 2026-08-03 stale page: an early VIX print
+   for the next session aborted the whole refresh).
+2. The refresh runs three times per trading day (22:37 UTC, 01:07 UTC,
+   10:07 UTC next morning) — early runs are safe (they publish the common
+   session) and later runs advance it once laggard feeds finalize.
+3. The page shows explicit freshness copy ("auto-refreshes three times each
+   trading day" / "refresh overdue") so staleness is visible, never silent.
