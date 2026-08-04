@@ -1,10 +1,10 @@
 {
   "schemaVersion": 2,
-  "currentModelVersion": "ppo_v8_nocal_frozen_2023_v1",
-  "exportedAt": "2026-08-01T21:12:20Z",
+  "currentModelVersion": "ppo_v10_macro_frozen_2023_v1",
+  "exportedAt": "2026-08-04T06:58:36Z",
   "models": {
     "ppo_v8_nocal_frozen_2023_v1": {
-      "role": "current_reference",
+      "role": "eligible_archived",
       "policyName": "v8 no-calendar",
       "config": "ppo_v8_nocal",
       "artifact": "ppo_v8_nocal_frozen_2023_v1.npz",
@@ -79,6 +79,55 @@
       "validation": {
         "savedHoldoutParity": "Covered by tests/test_live.py",
         "savedHoldoutEnd": "2026-07-30"
+      }
+    },
+    "ppo_v10_macro_frozen_2023_v1": {
+      "role": "current_reference",
+      "policyName": "v10 macro (leveraged)",
+      "config": "ppo_v10_macro",
+      "artifact": "ppo_v10_macro_frozen_2023_v1.npz",
+      "artifactSha256": "ab193c11822f08f6f7a773a1437d172e03f5a861b27e05e731a79c5bc01a7776",
+      "trainCutoff": "2023-12-31",
+      "forwardReplayStart": "2026-01-01",
+      "ensembleSeeds": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9
+      ],
+      "architecture": "30 -> 64 tanh -> 64 tanh -> 5 categorical logits",
+      "residualMultipliers": [
+        0.5,
+        0.75,
+        1.0,
+        1.25,
+        1.5
+      ],
+      "riskBudget": {
+        "vtTarget": 0.2,
+        "maxExposure": 1.5,
+        "financing": "T-bill + 50 bps on exposure above 1.0"
+      },
+      "featureCount": 28,
+      "training": {
+        "timesteps": 150000,
+        "bootstrapPaths": 3,
+        "episodeLength": 252,
+        "switchPenaltyBps": 5.0,
+        "entropyCoefficient": 0.005,
+        "calendarFeatures": false,
+        "relativeReward": true
+      },
+      "validation": {
+        "numpyVsInMemorySb3MaxAbsError": 0.0,
+        "comparisonWindowEnd": "2026-07-30",
+        "note": "Exact SB3 parity on the 2026 forward window; selection basis is the 2010-2025 walk-forward benchmark (v10Core Sharpe 1.083 vs v8 1.052 vs v4 1.047), era-validated on NDX 2000-2009."
       }
     }
   }

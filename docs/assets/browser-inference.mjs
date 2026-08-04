@@ -56,10 +56,10 @@ function parseJson(bytes, label) {
   }
 }
 
-function strictArgmax(logits, offset) {
+function strictArgmax(logits, offset, count = 3) {
   let action = 0;
   let best = logits[offset];
-  for (let index = 1; index < 3; index += 1) {
+  for (let index = 1; index < count; index += 1) {
     const value = logits[offset + index];
     if (value > best) {
       best = value;
@@ -69,8 +69,11 @@ function strictArgmax(logits, offset) {
   return action;
 }
 
-function topTwoMargin(logits, offset) {
-  const values = [logits[offset], logits[offset + 1], logits[offset + 2]];
+function topTwoMargin(logits, offset, count = 3) {
+  const values = [];
+  for (let index = 0; index < count; index += 1) {
+    values.push(logits[offset + index]);
+  }
   values.sort((left, right) => right - left);
   return values[0] - values[1];
 }
@@ -126,26 +129,29 @@ function validateManifest(manifest) {
   invariant(manifest.runtime?.wasmThreads === 1, "Browser runtime must use one thread");
   invariant(manifest.onnx?.input?.name, "Manifest is missing the ONNX input");
   invariant(manifest.onnx?.output?.name, "Manifest is missing the ONNX output");
+  const featureCount = manifest.features?.featureNames?.length ?? 0;
+  const actionCount = manifest.ensemble?.residualMultipliers?.length ?? 0;
+  invariant(featureCount >= 22, "Expected at least 22 raw features");
+  invariant(actionCount >= 3, "Expected at least 3 residual multipliers");
   invariant(
-    sameArray(manifest.onnx.input.shape, [10, 24]),
+    sameArray(manifest.onnx.input.shape, [10, featureCount + 2]),
     "Unexpected ONNX input shape",
   );
   invariant(
-    sameArray(manifest.onnx.output.shape, [10, 3]),
+    sameArray(manifest.onnx.output.shape, [10, actionCount]),
     "Unexpected ONNX output shape",
   );
   invariant(manifest.onnx.input.dtype === "float64", "ONNX input must be float64");
-  invariant(manifest.features?.featureNames?.length === 22, "Expected 22 raw features");
-  invariant(manifest.features.normalizerMean.length === 22, "Normalizer mean mismatch");
-  invariant(manifest.features.normalizerStd.length === 22, "Normalizer std mismatch");
+  invariant(manifest.features.normalizerMean.length === featureCount, "Normalizer mean mismatch");
+  invariant(manifest.features.normalizerStd.length === featureCount, "Normalizer std mismatch");
   manifest.features.normalizerStd.forEach((value, index) => {
     finiteNumber(value, `normalizerStd[${index}]`);
     invariant(value > 0, `normalizerStd[${index}] must be positive`);
   });
-  invariant(
-    sameArray(manifest.ensemble?.residualMultipliers, [0.5, 1, 1.5]),
-    "Residual multiplier contract mismatch",
+  const multipliersAscending = manifest.ensemble.residualMultipliers.every(
+    (value, index, array) => index === 0 || value > array[index - 1],
   );
+  invariant(multipliersAscending, "Residual multipliers must ascend");
   invariant(
     manifest.ensemble?.initialActorExposure?.length === 10,
     "Initial actor state must contain ten values",
@@ -202,7 +208,7 @@ function validateReplayContracts(manifest, inputs, reference, liveSignal) {
       invariant(inputs.dates[index] > inputs.dates[index - 1], "Replay dates are not sorted");
     }
     const raw = inputs.rawFeatures[index];
-    invariant(Array.isArray(raw) && raw.length === 22, "A raw feature row is invalid");
+    invariant(Array.isArray(raw) && raw.length === manifest.features.featureNames.length, "A raw feature row is invalid");
     raw.forEach((value, feature) => finiteNumber(value, `rawFeatures[${index}][${feature}]`));
     const vt10 = inputs.vt10Exposure[index];
     finiteNumber(vt10, `vt10Exposure[${index}]`);
@@ -246,8 +252,9 @@ async function runGoldenVectors(session, manifest, golden) {
       maximumLogitError,
       maxAbsoluteDifference(logits, expected),
     );
+    const goldenStride = manifest.ensemble.residualMultipliers.length;
     for (let seed = 0; seed < 10; seed += 1) {
-      const action = strictArgmax(logits, seed * 3);
+      const action = strictArgmax(logits, seed * goldenStride, goldenStride);
       invariant(action === vector.expectedActions[seed], "Golden action mismatch");
       actionMatches += 1;
     }
@@ -308,9 +315,9 @@ async function replayAndVerify(session, manifest, inputs, reference, liveSignal)
     const margins = [];
     const nextExposure = [];
     for (let seed = 0; seed < 10; seed += 1) {
-      const offset = seed * 3;
-      const action = strictArgmax(logits, offset);
-      const margin = topTwoMargin(logits, offset);
+      const offset = seed * multipliers.length;
+      const action = strictArgmax(logits, offset, multipliers.length);
+      const margin = topTwoMargin(logits, offset, multipliers.length);
       invariant(action === reference.actions[row][seed], `Action mismatch at ${inputs.dates[row]}`);
       actionMatches += 1;
       actions.push(action);
@@ -345,7 +352,7 @@ async function replayAndVerify(session, manifest, inputs, reference, liveSignal)
   const learnedMin = Math.min(...previousExposure);
   const learnedMax = Math.max(...previousExposure);
   const vt10Exposure = inputs.vt10Exposure.at(-1);
-  const tiltMultiplier = Math.max(0.5, Math.min(1.5, learnedMean / vt10Exposure));
+  const tiltMultiplier = Math.max(multipliers[0], Math.min(multipliers.at(-1), learnedMean / vt10Exposure));
   const vt20Exposure = Math.min(1.5, 2 * vt10Exposure);
   const compositeExposure = Math.min(1.5, tiltMultiplier * vt20Exposure);
   const latest = {
@@ -377,7 +384,7 @@ async function replayAndVerify(session, manifest, inputs, reference, liveSignal)
       `Latest static signal mismatch for ${key}`,
     );
   }
-  const voteCounts = [0, 0, 0];
+  const voteCounts = new Array(multipliers.length).fill(0);
   latestActions.forEach((action) => { voteCounts[action] += 1; });
   invariant(sameArray(voteCounts, reference.latest.voteCounts), "Vote count mismatch");
 

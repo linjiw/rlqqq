@@ -9,6 +9,7 @@ import pandas as pd
 import pytest
 
 from rlqqq.live import (
+    CROSS_ASSET_FEATURE_NAMES,
     FEATURE_NAMES,
     LEGACY_MODEL_VERSION,
     LIVE_FEATURE_NAMES,
@@ -16,6 +17,7 @@ from rlqqq.live import (
     FrozenActorEnsemble,
     append_forward_log,
     build_feature_frame,
+    build_feature_frame_v10,
     build_signal_payload,
     load_checked_market_frames,
     replay_frozen_policy,
@@ -32,9 +34,7 @@ LEGACY_MODEL = ROOT / "models" / "live" / f"{LEGACY_MODEL_VERSION}.npz"
 def checked_replay():
     bundle = FrozenActorEnsemble.load(MODEL)
     frames = load_checked_market_frames(ROOT / "data" / "raw")
-    features = build_feature_frame(
-        frames["QQQ"], frames["^VIX"], frames["^TNX"], frames["^IRX"]
-    )
+    features = build_feature_frame_v10(frames)
     return bundle, frames, features, replay_frozen_policy(
         bundle, features, frames["QQQ"]
     )
@@ -107,10 +107,13 @@ def test_v4_numpy_actors_match_saved_sb3_holdout_exposures():
 
 def test_current_actor_uses_no_calendar_features():
     bundle = FrozenActorEnsemble.load(MODEL)
-    assert list(bundle.feature_names) == LIVE_FEATURE_NAMES
+    assert list(bundle.feature_names) == LIVE_FEATURE_NAMES + CROSS_ASSET_FEATURE_NAMES
     assert "dow" not in bundle.feature_names
     assert "month" not in bundle.feature_names
     assert bundle.model_version == MODEL_VERSION
+    assert bundle.vt_target == 0.20
+    assert bundle.max_exposure == 1.5
+    assert list(bundle.residual_multipliers) == [0.5, 0.75, 1.0, 1.25, 1.5]
 
 
 def test_signal_contract_reproduces_latest_snapshot(tmp_path):
@@ -124,16 +127,16 @@ def test_signal_contract_reproduces_latest_snapshot(tmp_path):
     assert payload["asOf"] == "2026-07-31"
     assert payload["stale"] is False
     assert payload["market"]["price"] == 687.99
-    assert payload["signal"]["stance"] == "Defensive"
-    assert abs(payload["signal"]["vt10Exposure"] - 0.42) <= 0.01
-    assert abs(payload["signal"]["learnedMean"] - 0.46) <= 0.01
+    assert payload["signal"]["stance"] == "Reduced risk"
+    assert abs(payload["signal"]["vt10Exposure"] - 0.84) <= 0.01
+    assert abs(payload["signal"]["learnedMean"] - 0.88) <= 0.01
     assert payload["signal"]["learnedMin"] < payload["signal"]["learnedMean"]
     assert payload["signal"]["learnedMax"] > payload["signal"]["learnedMean"]
     assert len(payload["history"]["dates"]) == 90
     assert payload["model"]["trainCutoff"] == "2023-12-31"
     assert payload["model"]["version"] == MODEL_VERSION
-    assert payload["model"]["displayName"] == "v8 no-calendar"
-    assert payload["model"]["featureCount"] == 22
+    assert payload["model"]["displayName"] == "v10 macro (leveraged)"
+    assert payload["model"]["featureCount"] == 28
 
     signal_path = tmp_path / "signal.json"
     log_path = tmp_path / "forward.csv"

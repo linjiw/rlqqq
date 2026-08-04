@@ -17,7 +17,7 @@ from rlqqq.live import (
     FrozenActorEnsemble,
     append_forward_log,
     build_browser_replay_payloads,
-    build_feature_frame,
+    build_feature_frame_v10,
     build_signal_payload,
     fetch_yahoo_market_frames,
     load_checked_market_frames,
@@ -82,12 +82,7 @@ def main() -> None:
 
     latest_market_date = validate_latest_market_frames(frames)
 
-    features = build_feature_frame(
-        frames["QQQ"],
-        frames["^VIX"],
-        frames["^TNX"],
-        frames["^IRX"],
-    )
+    features = build_feature_frame_v10(frames)
     if features.empty or pd.Timestamp(features.index[-1]) != latest_market_date:
         feature_date = "missing" if features.empty else str(features.index[-1].date())
         raise ValueError(

@@ -46,11 +46,18 @@
 
   const BENCHMARK_POLICIES = [
     {
+      key: "v10Core",
+      name: "v10 macro core",
+      description: "Trained leveraged macro core (VT20 budget)",
+      status: "Deployed winner",
+      statusClass: "winner",
+    },
+    {
       key: "v8Core",
       name: "v8 core",
       description: "Trained no-calendar core",
-      status: "Deployed winner",
-      statusClass: "winner",
+      status: "Eligible · archived",
+      statusClass: "eligible",
     },
     {
       key: "v4Core",
@@ -350,13 +357,14 @@
       !/^[a-f0-9]{7,40}$/.test(payload.sourceRevision || "") ||
       !Array.isArray(payload.limitations) ||
       !selection ||
-      selection.winner !== "v8Core" ||
+      selection.winner !== "v10Core" ||
       selection.status !== "Selected for browser research deployment" ||
       selection.capitalDeploymentQualified !== false ||
       !selection.capitalDeploymentReason ||
       !selection.deploymentScope ||
       !selection.eligibleCandidates?.includes("v4Core") ||
       !selection.eligibleCandidates?.includes("v8Core") ||
+      !selection.eligibleCandidates?.includes("v10Core") ||
       !selection.ineligibleResearchOverlays?.includes("v4Composite") ||
       !selection.ineligibleResearchOverlays?.includes("v8Composite") ||
       !selection.modelVersion ||
@@ -371,7 +379,7 @@
       !forward.oneCloseLagSensitivity ||
       !forward.period ||
       !Number.isInteger(forward.period.days) ||
-      !/^\d{4}-\d{2}-\d{2}$/.test(forward.latestUnscoredSignal?.v8?.asOf || "") ||
+      !/^\d{4}-\d{2}-\d{2}$/.test(forward.latestUnscoredSignal?.v10?.asOf || "") ||
       forward.period.latestSignalScored !== false
     ) {
       throw new Error("Model benchmark schema or deployment selection is invalid");

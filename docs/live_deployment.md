@@ -2,12 +2,12 @@
 
 ## Boundary
 
-The public page runs only the selected frozen v8 no-calendar **core** policy
-in the browser. It does not expose the post-hoc composite as a live target and
+The public page runs only the selected frozen v10 macro (leveraged) **core**
+policy in the browser. It does not expose the post-hoc composite as a live target and
 does not call a market-data API. The two release paths are
 deliberately separate:
 
-1. `models/live/ppo_v8_nocal_frozen_2023_v1.npz` is the source release. It
+1. `models/live/ppo_v10_macro_frozen_2023_v1.npz` is the source release. It
    contains the shared training normalizer and all ten deterministic actors.
    Its `2023-12-31` cutoff is a decision-date label: the last training feature
    row is `2023-12-29`, and that row's reward realizes on `2024-01-02`.
@@ -20,13 +20,16 @@ deliberately separate:
 4. The browser verifies the release, runs ONNX, and reveals the current
    exposure only after its own replay agrees with the Python reference.
 
-The static input contains 22 raw market features per date. The browser
-normalizes them with the manifest statistics, then builds an ONNX input of
-shape `[10, 24]`: 22 normalized values, each actor's own previous exposure in
-slot 23, and the common current VT10 anchor in slot 24. The previous-exposure
-state is independent for every actor. The output is `[10, 3]` logits for
-residual multipliers `0.5`, `1.0`, and `1.5`; the resulting core exposure is
-capped at `1.0`.
+The static input contains 28 raw market features per date (22 core plus six
+cross-asset macro features from SPX, TLT, GLD, VIX, and the yield curve). The
+browser normalizes them with the manifest statistics, then builds an ONNX
+input of shape `[10, 30]`: 28 normalized values, each actor's own previous
+exposure, and the common current volatility anchor
+(`min(0.20 / realized_vol_21, 1.0)`). The previous-exposure state is
+independent for every actor. The output is `[10, 5]` logits for residual
+multipliers `0.5`, `0.75`, `1.0`, `1.25`, and `1.5`; the resulting core
+exposure is capped at `1.5`, with exposure above `1.0` financed at
+T-bill + 50 bps in all benchmark accounting.
 
 Because previous exposure is an observation, latest-row inference is not
 equivalent to the deployed policy. The browser starts all ten actor states at
@@ -63,7 +66,7 @@ The audited historical v4 animation remains usable independently.
 
 The weekday Pages workflow runs at 22:37 UTC, after the US close and away from
 the busiest top-of-hour period. `scripts/update_live_signal.py` fetches delayed
-QQQ, VIX, 10-year, and 3-month Treasury data, constructs the 22 raw features,
+QQQ, VIX, 10-year, and 3-month Treasury data, constructs the 28 raw features,
 and writes:
 
 - `docs/assets/live-signal.json`, the latest metadata and Python summary;

@@ -24,10 +24,9 @@ sys.path.insert(0, str(ROOT / "src"))
 
 from rlqqq.live import (  # noqa: E402
     MODEL_VERSION,
-    RESIDUAL_MULTIPLIERS,
     FrozenActorEnsemble,
     browser_feature_schema,
-    build_feature_frame,
+    build_feature_frame_v10,
     canonical_json_bytes,
     load_checked_market_frames,
     payload_sha256,
@@ -49,7 +48,7 @@ def build_onnx(ensemble: FrozenActorEnsemble) -> bytes:
         )
     ]
     outputs = [
-        helper.make_tensor_value_info("logits", TensorProto.DOUBLE, [seeds, 3])
+        helper.make_tensor_value_info("logits", TensorProto.DOUBLE, [seeds, ensemble.n_actions])
     ]
     nodes = []
     initializers = []
@@ -142,7 +141,7 @@ def build_onnx(ensemble: FrozenActorEnsemble) -> bytes:
     )
     graph = helper.make_graph(
         nodes,
-        "rlqqq_v8_ten_actor_logits",
+        "rlqqq_v10_ten_actor_logits",
         inputs,
         outputs,
         initializer=initializers,
@@ -154,7 +153,7 @@ def build_onnx(ensemble: FrozenActorEnsemble) -> bytes:
         opset_imports=[helper.make_opsetid("", OPSET)],
     )
     model.doc_string = (
-        "Frozen RLQQQ v8 ten-seed actor logits. Normalization and recursive "
+        "Frozen RLQQQ v10 ten-seed actor logits. Normalization and recursive "
         "per-actor exposure state are supplied by the browser contract."
     )
     model.metadata_props.add(key="model_version", value=ensemble.model_version)
@@ -187,9 +186,7 @@ def build_golden_vectors(
     onnx_digest: str,
 ) -> tuple[dict, float]:
     frames = load_checked_market_frames(ROOT / "data" / "raw")
-    features = build_feature_frame(
-        frames["QQQ"], frames["^VIX"], frames["^TNX"], frames["^IRX"]
-    )
+    features = build_feature_frame_v10(frames)
     replay = replay_frozen_policy(ensemble, features, frames["QQQ"])
     actor_exposure = replay.attrs["actor_exposure"]
     actions = replay.attrs["actions"]
@@ -292,7 +289,7 @@ def build_manifest(
             "output": {
                 "name": "logits",
                 "dtype": "float64",
-                "shape": [ensemble.ensemble_size, 3],
+                "shape": [ensemble.ensemble_size, ensemble.n_actions],
             },
         },
         "runtime": {
@@ -305,8 +302,8 @@ def build_manifest(
         "ensemble": {
             "seeds": list(range(ensemble.ensemble_size)),
             "parameterCount": parameter_count,
-            "residualMultipliers": RESIDUAL_MULTIPLIERS.tolist(),
-            "maximumCoreExposure": 1.0,
+            "residualMultipliers": list(ensemble.residual_multipliers),
+            "maximumCoreExposure": ensemble.max_exposure,
             "initialActorExposure": [0.0] * ensemble.ensemble_size,
         },
         "features": {
@@ -409,7 +406,7 @@ def verify_existing_bundle(
         expected_shape = (ensemble.ensemble_size, len(ensemble.feature_names) + 2)
         if observations.shape != expected_shape or expected_logits.shape != (
             ensemble.ensemble_size,
-            len(RESIDUAL_MULTIPLIERS),
+            ensemble.n_actions,
         ):
             raise SystemExit("Golden-vector tensor shape mismatch")
         onnx_logits = session.run(
@@ -448,7 +445,7 @@ def main() -> None:
         )
     model_bytes = build_onnx(ensemble)
     onnx_digest = hashlib.sha256(model_bytes).hexdigest()
-    onnx_name = f"rlqqq-v8-ensemble.{onnx_digest[:12]}.onnx"
+    onnx_name = f"rlqqq-v10-ensemble.{onnx_digest[:12]}.onnx"
     onnx_path = args.output_dir / onnx_name
     golden_path = args.output_dir / "golden-vectors.json"
     manifest_path = args.output_dir / "model-manifest.json"

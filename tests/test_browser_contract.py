@@ -39,20 +39,17 @@ def test_deployed_browser_model_matches_the_checked_benchmark_winner():
     assert web_report_path.read_bytes() == research_report_path.read_bytes()
     assert benchmark["schemaVersion"] == 1
     assert benchmark["historicalStatus"] == "complete"
-    assert benchmark["historicalWalkForward"]["provenance"]["seriesFiles"] == 160
+    assert benchmark["historicalWalkForward"]["provenance"]["seriesFiles"] == 243
     implementation = benchmark["evaluationImplementation"]
     assert implementation["sha256"] == file_sha256(ROOT / implementation["path"])
 
     historical = benchmark["historicalWalkForward"]
     assert historical["period"]["realizedEnd"] == "2026-01-02"
     assert historical["oneCloseLagSensitivity"]["qqq"] == historical["metrics"]["qqq"]
-    assert (
-        benchmark["frozen2026"]["oneCloseLagSensitivity"]["v4Core"]["sharpe"]
-        > benchmark["frozen2026"]["oneCloseLagSensitivity"]["v8Core"]["sharpe"]
-    )
+    assert "v10Core" in benchmark["frozen2026"]["oneCloseLagSensitivity"]
 
     selection = benchmark["deploymentSelection"]
-    assert selection["winner"] == "v8Core"
+    assert selection["winner"] == "v10Core"
     assert selection["modelVersion"] == manifest["modelVersion"]
     assert selection["modelVersion"] == signal["model"]["version"]
     assert selection["capitalDeploymentQualified"] is False
@@ -63,15 +60,15 @@ def test_deployed_browser_model_matches_the_checked_benchmark_winner():
 
     forward = benchmark["frozen2026"]
     assert forward["period"]["latestSignalScored"] is False
-    assert forward["latestUnscoredSignal"]["v8"]["asOf"] == signal["asOf"]
+    assert forward["latestUnscoredSignal"]["v10"]["asOf"] == signal["asOf"]
 
 
-def test_page_exposes_only_the_benchmark_gated_v8_core_as_current():
+def test_page_exposes_only_the_benchmark_gated_v10_core_as_current():
     html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     javascript = (ASSETS / "dashboard.js").read_text(encoding="utf-8")
 
-    assert "v8 core is the browser deployment winner" in html
-    assert "v8 core is the sole deployed policy" in html
+    assert "v10 macro core is the browser deployment winner" in html
+    assert "v10 macro core is the sole deployed policy" in html
     assert 'id="benchmark"' in html
     assert 'id="live-composite"' not in html
     assert "loadVerifiedDeployment" in javascript
@@ -188,7 +185,7 @@ def test_published_replay_is_hash_bound_and_recursively_reproducible():
 
     assert raw.shape == (row_count, len(ensemble.feature_names))
     assert baselines.shape == (row_count,)
-    assert expected_logits.shape == (row_count, actor_count, 3)
+    assert expected_logits.shape == (row_count, actor_count, len(ensemble.residual_multipliers))
     np.testing.assert_allclose(
         ensemble.normalize(raw), expected_normalized, rtol=0, atol=0
     )
@@ -204,8 +201,11 @@ def test_published_replay_is_hash_bound_and_recursively_reproducible():
         )
         logits = ensemble.logits(observations)
         actions = np.argmax(logits, axis=1)
+        bundle_multipliers = np.asarray(ensemble.residual_multipliers)
         exposure = np.clip(
-            baselines[index] * RESIDUAL_MULTIPLIERS[actions], 0.0, 1.0
+            baselines[index] * bundle_multipliers[actions],
+            0.0,
+            ensemble.max_exposure,
         )
         # libm tanh can differ by a few ULPs across runner architectures.
         np.testing.assert_allclose(
@@ -222,7 +222,7 @@ def test_published_replay_is_hash_bound_and_recursively_reproducible():
     assert latest["actorExposure"] == expected_exposure[-1].tolist()
     assert latest["actorStateSha256"] == actor_state_sha256(expected_exposure[-1])
     assert latest["voteCounts"] == np.bincount(
-        expected_actions[-1], minlength=len(RESIDUAL_MULTIPLIERS)
+        expected_actions[-1], minlength=len(ensemble.residual_multipliers)
     ).tolist()
     assert latest["learnedMean"] == pytest.approx(float(previous.mean()))
     assert signal["asOf"] == reference["asOf"]

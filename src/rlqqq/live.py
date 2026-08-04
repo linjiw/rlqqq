@@ -19,11 +19,20 @@ from typing import Mapping
 import numpy as np
 import pandas as pd
 
-MODEL_VERSION = "ppo_v8_nocal_frozen_2023_v1"
+MODEL_VERSION = "ppo_v10_macro_frozen_2023_v1"
+V8_MODEL_VERSION = "ppo_v8_nocal_frozen_2023_v1"
 LEGACY_MODEL_VERSION = "ppo_v4_resid_frozen_2023_v1"
 TRAIN_CUTOFF = "2023-12-31"
 FORWARD_START = "2026-01-01"
 RESIDUAL_MULTIPLIERS = np.array([0.5, 1.0, 1.5], dtype=np.float64)
+CROSS_ASSET_FEATURE_NAMES = [
+    "spx_ratio_mom_63",
+    "bond_trend",
+    "gold_trend",
+    "stock_bond_corr_63",
+    "vrp_proxy",
+    "curve_slope",
+]
 
 BASE_FEATURE_NAMES = [
     "ret_1d",
@@ -95,10 +104,19 @@ class FrozenActorEnsemble:
     action_weight: np.ndarray
     action_bias: np.ndarray
     artifact_sha256: str
+    # residual-policy contract; legacy bundles (v4/v8) default to the
+    # 3-multiplier defensive vt10 profile.
+    residual_multipliers: tuple[float, ...] = (0.5, 1.0, 1.5)
+    vt_target: float = 0.10
+    max_exposure: float = 1.0
 
     @property
     def ensemble_size(self) -> int:
         return int(self.layer1_weight.shape[0])
+
+    @property
+    def n_actions(self) -> int:
+        return int(self.action_bias.shape[1])
 
     @classmethod
     def load(cls, path: str | Path) -> "FrozenActorEnsemble":
@@ -108,7 +126,8 @@ class FrozenActorEnsemble:
             model_version = str(saved["model_version"].item())
             default_policy_names = {
                 LEGACY_MODEL_VERSION: "v4 residual",
-                MODEL_VERSION: "v8 no-calendar",
+                V8_MODEL_VERSION: "v8 no-calendar",
+                MODEL_VERSION: "v10 macro (leveraged)",
             }
             bundle = cls(
                 model_version=model_version,
@@ -128,6 +147,21 @@ class FrozenActorEnsemble:
                 action_weight=saved["action_weight"].astype(np.float64),
                 action_bias=saved["action_bias"].astype(np.float64),
                 artifact_sha256=digest,
+                residual_multipliers=(
+                    tuple(saved["residual_multipliers"].astype(float).tolist())
+                    if "residual_multipliers" in saved.files
+                    else (0.5, 1.0, 1.5)
+                ),
+                vt_target=(
+                    float(saved["vt_target"])
+                    if "vt_target" in saved.files
+                    else 0.10
+                ),
+                max_exposure=(
+                    float(saved["max_exposure"])
+                    if "max_exposure" in saved.files
+                    else 1.0
+                ),
             )
         bundle.validate()
         return bundle
@@ -135,6 +169,7 @@ class FrozenActorEnsemble:
     def validate(self) -> None:
         seeds = self.ensemble_size
         features = len(self.feature_names)
+        actions = len(self.residual_multipliers)
         expected = {
             "normalizer_mean": (features,),
             "normalizer_std": (features,),
@@ -142,8 +177,8 @@ class FrozenActorEnsemble:
             "layer1_bias": (seeds, 64),
             "layer2_weight": (seeds, 64, 64),
             "layer2_bias": (seeds, 64),
-            "action_weight": (seeds, 3, 64),
-            "action_bias": (seeds, 3),
+            "action_weight": (seeds, actions, 64),
+            "action_bias": (seeds, actions),
         }
         for name, shape in expected.items():
             actual = getattr(self, name).shape
@@ -151,11 +186,14 @@ class FrozenActorEnsemble:
                 raise ValueError(f"{name} has shape {actual}; expected {shape}")
         if not self.model_version or not self.policy_name or not self.train_cutoff:
             raise ValueError("Actor bundle metadata is incomplete")
-        unknown = set(self.feature_names).difference(FEATURE_NAMES)
+        supported = set(FEATURE_NAMES) | set(CROSS_ASSET_FEATURE_NAMES)
+        unknown = set(self.feature_names).difference(supported)
         if unknown:
             raise ValueError(f"Actor bundle has unsupported features: {sorted(unknown)}")
         expected_order = tuple(
-            name for name in FEATURE_NAMES if name in set(self.feature_names)
+            name
+            for name in FEATURE_NAMES + CROSS_ASSET_FEATURE_NAMES
+            if name in set(self.feature_names)
         )
         if len(set(self.feature_names)) != features:
             raise ValueError("Actor feature names must be unique")
@@ -163,13 +201,17 @@ class FrozenActorEnsemble:
             raise ValueError("Actor feature order does not match the live pipeline")
         if np.any(self.normalizer_std <= 0):
             raise ValueError("Normalizer standard deviations must be positive")
+        if not (0.0 < self.vt_target <= 0.5 and 1.0 <= self.max_exposure <= 2.0):
+            raise ValueError("Residual baseline contract is out of range")
+        if list(self.residual_multipliers) != sorted(self.residual_multipliers):
+            raise ValueError("Residual multipliers must be ascending")
 
     def normalize(self, raw_features: np.ndarray) -> np.ndarray:
         values = (raw_features - self.normalizer_mean) / self.normalizer_std
         return np.clip(values, -10.0, 10.0)
 
     def logits(self, observations: np.ndarray) -> np.ndarray:
-        """Return categorical actor logits for one observation per actor."""
+        """Return categorical actor logits (one observation row per actor)."""
         obs = np.asarray(observations, dtype=np.float64)
         expected = (self.ensemble_size, len(self.feature_names) + 2)
         if obs.shape != expected:
@@ -261,6 +303,62 @@ def build_feature_frame(
     return combined[FEATURE_NAMES].dropna()
 
 
+def build_cross_asset_frame(
+    qqq: pd.DataFrame,
+    vix: pd.DataFrame,
+    tnx: pd.DataFrame,
+    irx: pd.DataFrame,
+    spx: pd.DataFrame,
+    tlt: pd.DataFrame,
+    gld: pd.DataFrame,
+) -> pd.DataFrame:
+    """Cross-asset macro features matching rlqqq.data.cross_asset_features.
+
+    All causal through close of day t; early NaNs (pre-inception TLT/GLD)
+    are neutral-zero exactly as in training.
+    """
+    index = qqq.index
+    own = qqq["adj_close"]
+    counterpart = spx["adj_close"].reindex(index).ffill()
+    tlt_a = tlt["adj_close"].reindex(index).ffill()
+    gld_a = gld["adj_close"].reindex(index).ffill()
+    vix_a = vix["Close"].reindex(index).ffill()
+    spx_a = counterpart
+
+    frame = pd.DataFrame(index=index)
+    ratio = own / counterpart
+    frame["spx_ratio_mom_63"] = np.log(ratio / ratio.shift(63))
+    frame["bond_trend"] = np.log(tlt_a / tlt_a.shift(63))
+    frame["gold_trend"] = np.log(gld_a / gld_a.shift(63))
+    own_r = own.pct_change()
+    frame["stock_bond_corr_63"] = own_r.rolling(63).corr(tlt_a.pct_change())
+    spx_r = spx_a.pct_change()
+    frame["vrp_proxy"] = (vix_a / 100.0) ** 2 - spx_r.rolling(21).var() * 252
+    # ^TNX and ^IRX both quote percent directly (no /10) in this frame,
+    # matching rlqqq.data.cross_asset_features exactly.
+    tnx_pct = tnx["Close"].reindex(index).ffill()
+    irx_pct = irx["Close"].reindex(index).ffill()
+    frame["curve_slope"] = tnx_pct - irx_pct
+    return frame.fillna(0.0)
+
+
+def build_feature_frame_v10(
+    frames: Mapping[str, pd.DataFrame],
+) -> pd.DataFrame:
+    """28-feature frame for the v10 macro bundle (22 core minus calendar
+    is 22 -> the v10 core set, plus 6 cross-asset features)."""
+    core = build_feature_frame(
+        frames["QQQ"], frames["^VIX"], frames["^TNX"], frames["^IRX"]
+    )
+    cross = build_cross_asset_frame(
+        frames["QQQ"], frames["^VIX"], frames["^TNX"], frames["^IRX"],
+        frames["^GSPC"], frames["TLT"], frames["GLD"],
+    )
+    combined = core.join(cross.reindex(core.index))
+    live_names = [n for n in FEATURE_NAMES if n not in {"dow", "month"}]
+    return combined[live_names + CROSS_ASSET_FEATURE_NAMES].dropna()
+
+
 def _clean_provider_frame(frame: pd.DataFrame, symbol: str) -> pd.DataFrame:
     data = frame.copy()
     if isinstance(data.columns, pd.MultiIndex):
@@ -293,12 +391,21 @@ def load_checked_market_frames(raw_dir: str | Path) -> dict[str, pd.DataFrame]:
         frame = pd.read_csv(root / filename, parse_dates=["Date"]).set_index("Date")
         return _price_frame(frame, symbol)
 
-    return {
+    frames = {
         "QQQ": read("yf_QQQ.csv", "QQQ"),
         "^VIX": read("yf_IDX_VIX.csv", "^VIX"),
         "^TNX": read("yf_IDX_TNX.csv", "^TNX"),
         "^IRX": read("yf_IDX_IRX.csv", "^IRX"),
     }
+    # cross-asset feeds for the v10 macro bundle (Volume not required)
+    for symbol, filename in [("^GSPC", "yf_IDX_GSPC.csv"), ("TLT", "yf_TLT.csv"),
+                             ("GLD", "yf_GLD.csv")]:
+        frame = pd.read_csv(root / filename, parse_dates=["Date"]).set_index("Date")
+        cleaned = _clean_provider_frame(frame, symbol)
+        adjusted = "Adj Close" if "Adj Close" in cleaned.columns else "Close"
+        cleaned["adj_close"] = pd.to_numeric(cleaned[adjusted], errors="coerce")
+        frames[symbol] = cleaned.dropna(subset=["Close", "adj_close"])
+    return frames
 
 
 def fetch_yahoo_market_frames(
@@ -312,7 +419,7 @@ def fetch_yahoo_market_frames(
     import yfinance as yf
 
     frames: dict[str, pd.DataFrame] = {}
-    for symbol in ["QQQ", "^VIX", "^TNX", "^IRX"]:
+    for symbol in ["QQQ", "^VIX", "^TNX", "^IRX", "^GSPC", "TLT", "GLD"]:
         last_error: Exception | None = None
         for attempt in range(retries):
             try:
@@ -324,7 +431,17 @@ def fetch_yahoo_market_frames(
                 )
                 if history.empty:
                     raise RuntimeError(f"{symbol} returned no rows")
-                frames[symbol] = _price_frame(history, symbol)
+                if symbol in ("^GSPC", "TLT", "GLD"):
+                    cleaned = _clean_provider_frame(history, symbol)
+                    adjusted = (
+                        "Adj Close" if "Adj Close" in cleaned.columns else "Close"
+                    )
+                    cleaned["adj_close"] = pd.to_numeric(
+                        cleaned[adjusted], errors="coerce"
+                    )
+                    frames[symbol] = cleaned.dropna(subset=["Close", "adj_close"])
+                else:
+                    frames[symbol] = _price_frame(history, symbol)
                 break
             except Exception as exc:  # noqa: BLE001
                 last_error = exc
@@ -386,11 +503,16 @@ def replay_frozen_policy(
 
     close_return = qqq["adj_close"].pct_change().reindex(evaluation.index)
     realized_vol = close_return.rolling(21).std() * np.sqrt(252)
+    # the observation anchor is the bundle's own baseline; the vt10 column
+    # is retained in the result for display/back-compat.
+    anchor = (ensemble.vt_target / realized_vol).clip(upper=1.0)
+    anchor.iloc[:21] = 0.5
     vt10 = (0.10 / realized_vol).clip(upper=1.0)
     vt10.iloc[:21] = 0.5
-    if vt10.isna().any():
+    if anchor.isna().any() or vt10.isna().any():
         raise ValueError("Forward volatility baseline contains missing values")
 
+    multipliers = np.asarray(ensemble.residual_multipliers, dtype=np.float64)
     actor_exposure = np.zeros(ensemble.ensemble_size, dtype=np.float64)
     exposure_rows = np.empty((len(evaluation), ensemble.ensemble_size))
     action_rows = np.empty((len(evaluation), ensemble.ensemble_size), dtype=int)
@@ -399,7 +521,7 @@ def replay_frozen_policy(
         evaluation[list(ensemble.feature_names)].to_numpy(dtype=np.float64)
     )
     for index, (feature_row, baseline) in enumerate(
-        zip(normalized, vt10.to_numpy(dtype=np.float64), strict=True)
+        zip(normalized, anchor.to_numpy(dtype=np.float64), strict=True)
     ):
         observations = np.column_stack(
             [
@@ -410,7 +532,7 @@ def replay_frozen_policy(
         )
         actions = ensemble.actions(observations)
         actor_exposure = np.clip(
-            baseline * RESIDUAL_MULTIPLIERS[actions], 0.0, 1.0
+            baseline * multipliers[actions], 0.0, ensemble.max_exposure
         )
         action_rows[index] = actions
         exposure_rows[index] = actor_exposure
@@ -423,12 +545,13 @@ def replay_frozen_policy(
     result["drawdown"] = evaluation["drawdown"]
     result["volume_ratio_21"] = evaluation["vol_ratio_21"]
     result["vix"] = evaluation["vix"]
-    result["vt10_exposure"] = vt10
+    result["vt10_exposure"] = anchor  # the bundle's own observation anchor
     result["learned_mean"] = exposure_rows.mean(axis=1)
     result["learned_min"] = exposure_rows.min(axis=1)
     result["learned_max"] = exposure_rows.max(axis=1)
     result["tilt_multiplier"] = np.clip(
-        result["learned_mean"] / result["vt10_exposure"], 0.5, 1.5
+        result["learned_mean"] / result["vt10_exposure"],
+        multipliers[0], multipliers[-1],
     )
     result["vt20_exposure"] = np.minimum(
         1.5, 2.0 * result["vt10_exposure"]
@@ -436,6 +559,7 @@ def replay_frozen_policy(
     result["composite_exposure"] = np.minimum(
         1.5, result["tilt_multiplier"] * result["vt20_exposure"]
     )
+    result["anchor_exposure"] = anchor
     result.attrs["actions"] = action_rows
     result.attrs["actor_exposure"] = exposure_rows
     result.attrs["model_version"] = ensemble.model_version
@@ -504,7 +628,7 @@ def browser_feature_schema(ensemble: FrozenActorEnsemble) -> dict:
         "featureNames": list(ensemble.feature_names),
         "normalizerClip": [-10.0, 10.0],
         "observationOrder": [
-            "normalizedFeatures[22]",
+            f"normalizedFeatures[{len(ensemble.feature_names)}]",
             "previousExposureForActor",
             "vt10Exposure",
         ],
@@ -546,7 +670,7 @@ def build_browser_replay_payloads(
     )
     baselines = replay["vt10_exposure"].to_numpy(dtype=np.float64)
     logits_rows = np.empty(
-        (len(replay), ensemble.ensemble_size, len(RESIDUAL_MULTIPLIERS)),
+        (len(replay), ensemble.ensemble_size, ensemble.n_actions),
         dtype=np.float64,
     )
     margins = np.empty((len(replay), ensemble.ensemble_size), dtype=np.float64)
@@ -590,7 +714,7 @@ def build_browser_replay_payloads(
     latest = replay.iloc[-1]
     latest_actions = expected_actions[-1].astype(int)
     vote_counts = np.bincount(
-        latest_actions, minlength=len(RESIDUAL_MULTIPLIERS)
+        latest_actions, minlength=ensemble.n_actions
     )
     reference_payload = {
         "schemaVersion": 1,

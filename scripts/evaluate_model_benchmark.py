@@ -32,6 +32,7 @@ sys.path.insert(0, str(ROOT / "src"))
 from rlqqq.live import (  # noqa: E402
     FrozenActorEnsemble,
     build_feature_frame,
+    build_feature_frame_v10,
     load_checked_market_frames,
     replay_frozen_policy,
 )
@@ -39,10 +40,12 @@ from rlqqq.live import (  # noqa: E402
 CONFIGS = {
     "v4": "ppo_v4_resid",
     "v8": "ppo_v8_nocal",
+    "v10": "ppo_v10_macro",
 }
 FROZEN_MODELS = {
     "v4": ROOT / "models" / "live" / "ppo_v4_resid_frozen_2023_v1.npz",
     "v8": ROOT / "models" / "live" / "ppo_v8_nocal_frozen_2023_v1.npz",
+    "v10": ROOT / "models" / "live" / "ppo_v10_macro_frozen_2023_v1.npz",
 }
 SEEDS = tuple(range(10))
 COST_BPS = 2.0
@@ -363,8 +366,11 @@ def historical_evaluation(series_root: Path) -> dict:
         dates_v8, seeds_v8 = _load_seed_exposures(
             series_root, CONFIGS["v8"], fold_name
         )
-        if not dates_v4.equals(dates_v8):
-            raise ValueError(f"v4/v8 dates differ in {fold_name}")
+        dates_v10, seeds_v10 = _load_seed_exposures(
+            series_root, CONFIGS["v10"], fold_name
+        )
+        if not dates_v4.equals(dates_v8) or not dates_v4.equals(dates_v10):
+            raise ValueError(f"v4/v8/v10 dates differ in {fold_name}")
         dates = dates_v4
         asset_return = (
             prices.pct_change().shift(-1).reindex(dates).to_numpy(dtype=float)
@@ -381,12 +387,14 @@ def historical_evaluation(series_root: Path) -> dict:
 
         v4_core = seeds_v4.mean(axis=0)
         v8_core = seeds_v8.mean(axis=0)
+        v10_core = seeds_v10.mean(axis=0)
         vt20 = np.minimum(1.5, 2.0 * continuous_vt10)
         actor_vt20 = np.minimum(1.5, 2.0 * actor_vt10)
 
         exposures: dict[str, np.ndarray] = {
             "v4Core": v4_core,
             "v8Core": v8_core,
+            "v10Core": v10_core,
             "v4Composite": np.minimum(
                 1.5,
                 np.clip(v4_core / continuous_vt10, 0.5, 1.5) * vt20,
@@ -454,12 +462,15 @@ def historical_evaluation(series_root: Path) -> dict:
 
 def frozen_2026_evaluation() -> dict:
     frames = load_checked_market_frames(ROOT / "data" / "raw")
-    features = build_feature_frame(
+    features_core = build_feature_frame(
         frames["QQQ"], frames["^VIX"], frames["^TNX"], frames["^IRX"]
     )
+    features_v10 = build_feature_frame_v10(frames)
     replay = {
         version: replay_frozen_policy(
-            FrozenActorEnsemble.load(path), features, frames["QQQ"]
+            FrozenActorEnsemble.load(path),
+            features_v10 if version == "v10" else features_core,
+            frames["QQQ"],
         )
         for version, path in FROZEN_MODELS.items()
     }
@@ -478,6 +489,7 @@ def frozen_2026_evaluation() -> dict:
     exposures = {
         "v4Core": replay["v4"]["learned_mean"].iloc[:-1].to_numpy(dtype=float),
         "v8Core": replay["v8"]["learned_mean"].iloc[:-1].to_numpy(dtype=float),
+        "v10Core": replay["v10"]["learned_mean"].iloc[:-1].to_numpy(dtype=float),
         "v4Composite": replay["v4"]["composite_exposure"].iloc[:-1].to_numpy(dtype=float),
         "v8Composite": replay["v8"]["composite_exposure"].iloc[:-1].to_numpy(dtype=float),
         "vt10": vt10,
@@ -547,14 +559,14 @@ def select_deployment(historical: dict | None) -> dict:
             "status": "Historical series required for deployment selection",
         }
     metrics = historical["metrics"]
-    candidates = ["v4Core", "v8Core"]
+    candidates = ["v4Core", "v8Core", "v10Core"]
     best_sharpe = max(metrics[name]["sharpe"] for name in candidates)
     tied = [
         name
         for name in candidates
         if best_sharpe - metrics[name]["sharpe"] <= SHARPE_TIE_BAND
     ]
-    feature_counts = {"v4Core": 24, "v8Core": 22}
+    feature_counts = {"v4Core": 24, "v8Core": 22, "v10Core": 28}
     winner = min(
         tied,
         key=lambda name: (
@@ -563,22 +575,26 @@ def select_deployment(historical: dict | None) -> dict:
         ),
     )
     lagged = historical["oneCloseLagSensitivity"]
+    versions = {
+        "v4Core": "ppo_v4_resid_frozen_2023_v1",
+        "v8Core": "ppo_v8_nocal_frozen_2023_v1",
+        "v10Core": "ppo_v10_macro_frozen_2023_v1",
+    }
     return {
         "winner": winner,
-        "modelVersion": (
-            "ppo_v8_nocal_frozen_2023_v1"
-            if winner == "v8Core"
-            else "ppo_v4_resid_frozen_2023_v1"
-        ),
+        "modelVersion": versions[winner],
         "status": "Selected for browser research deployment",
         "deploymentScope": "Research and paper-trading signal; not qualified for capital deployment",
         "capitalDeploymentQualified": False,
         "eligibleCandidates": candidates,
         "ineligibleResearchOverlays": ["v4Composite", "v8Composite"],
         "rule": (
-            "Compare trained core policies at the same VT10/cap-1 risk budget. "
+            "Compare trained core policies (v4/v8 at the VT10/cap-1 budget; "
+            "v10 at its own trained VT20/cap-1.5 budget with T-bill+50bp "
+            "financing in the shared accounting). "
             f"Treat a Sharpe difference within {SHARPE_TIE_BAND:.2f} as "
-            "non-inferior, then prefer fewer features and lower turnover. "
+            "non-inferior, then prefer fewer features and lower turnover; a "
+            "candidate that beats the band on Sharpe wins outright. "
             "Post-hoc composite overlays are ineligible."
         ),
         "sharpeTieBand": SHARPE_TIE_BAND,

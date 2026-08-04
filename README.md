@@ -8,8 +8,8 @@ after realistic costs, with statistically honest evaluation.
 ## Interactive dashboard
 
 The [RLQQQ policy replay](https://linjiw.github.io/rlqqq/) publishes only the
-selected v8 no-calendar core model as its current delayed-close target. A
-checked-in benchmark compares v8 and v4 under identical accounting and keeps
+selected v10 macro core model as its current delayed-close target. A
+checked-in benchmark compares v10, v8, and v4 under identical accounting and keeps
 the old v4/composite animation clearly separated as an archived research
 replay. The dashboard also exports that archive as WebM video or a PNG frame.
 
@@ -19,7 +19,9 @@ Rebuild its checked-in data bundle with:
 .venv/bin/python scripts/build_web_data.py
 ```
 
-The latest policy panel runs the official frozen v8 ensemble in the browser.
+The latest policy panel runs the official frozen v10 macro ensemble (28
+features, 5-level residual multipliers on a 20%-vol-target anchor, 1.5x cap)
+in the browser.
 Its source is the checked-in NPZ release; `scripts/export_browser_policy.py`
 converts all ten actors into one hash-versioned, float64 ONNX model. The page
 uses the self-hosted ONNX Runtime Web 1.27 WASM runtime with one thread and
@@ -54,13 +56,14 @@ eight-fold, ten-seed walk-forward series with:
 .venv/bin/python scripts/evaluate_model_benchmark.py
 ```
 
-The evaluator reports the trained cores, post-hoc leverage overlays, simple
-VT10/VT20 rules, QQQ, frozen 2026 replay, and a conservative one-close-lag
-sensitivity. Its selection rule limits deployment eligibility to trained core
-models; v8 wins the near-tie because it removes two questionable calendar
-features, trades less, and is also ahead under the historical lagged timing
-sensitivity. The short 2026 lag sensitivity reverses the core ranking, so the
-composite overlays and 2026 record are never treated as selection evidence.
+The evaluator reports the trained cores (v4, v8, and the current v10 macro
+leveraged core), post-hoc leverage overlays, simple VT10/VT20 rules, QQQ, the
+frozen 2026 replay, and a conservative one-close-lag sensitivity. Its
+selection rule limits deployment eligibility to trained core models; **v10
+wins outright** (walk-forward Sharpe 1.083 vs v8 1.052 and v4 1.047, at its
+own trained VT20/cap-1.5 risk budget with T-bill+50bp financing in the shared
+accounting), and is additionally era-validated on NDX 2000-2009. The 2026
+record is never treated as selection evidence.
 
 See [docs/live_deployment.md](docs/live_deployment.md) for the release
 contract, scheduled generation, fail-closed parity checks, and signal timing.

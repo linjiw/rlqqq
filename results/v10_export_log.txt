@@ -1,0 +1,13 @@
+v10 features (28): ['ret_1d', 'ret_5d', 'ret_10d', 'ret_21d', 'ret_63d', 'ret_126d', 'ret_252d', 'vol_5d', 'vol_21d', 'vol_63d', 'ma_gap_21', 'ma_gap_50', 'ma_gap_200', 'rsi_14', 'macd_hist', 'drawdown', 'hl_range', 'overnight_gap', 'vol_ratio_21', 'vix', 'term_spread_10y_3m', 'vix_chg_5d', 'spx_ratio_mom_63', 'bond_trend', 'gold_trend', 'stock_bond_corr_63', 'vrp_proxy', 'curve_slope']
+  seed 3: trained
+  seed 2: trained
+  seed 6: trained
+  seed 4: trained
+  seed 5: trained
+  seed 1: trained
+  seed 0: trained
+  seed 8: trained
+  seed 9: trained
+  seed 7: trained
+Wrote models/live/ppo_v10_macro_frozen_2023_v1.npz (238.4 KiB)
+SHA256 ab193c11822f08f6f7a773a1437d172e03f5a861b27e05e731a79c5bc01a7776

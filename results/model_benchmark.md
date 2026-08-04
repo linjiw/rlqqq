@@ -1,14 +1,14 @@
 # RLQQQ v4 vs v8 deployment benchmark
 
-Evaluated 2026-08-01 at `f611c2b99cd098b331302f9ccb631c087af1ea86`.
+Evaluated 2026-08-04 at `23a1fcfd767009de995fa8fe316e71e98a88360d`.
 
 ## Deployment decision
 
-**Winner: `ppo_v8_nocal_frozen_2023_v1`.**
+**Winner: `ppo_v10_macro_frozen_2023_v1`.**
 
 **Scope: Research and paper-trading signal; not qualified for capital deployment.**
 
-Compare trained core policies at the same VT10/cap-1 risk budget. Treat a Sharpe difference within 0.02 as non-inferior, then prefer fewer features and lower turnover. Post-hoc composite overlays are ineligible.
+Compare trained core policies (v4/v8 at the VT10/cap-1 budget; v10 at its own trained VT20/cap-1.5 budget with T-bill+50bp financing in the shared accounting). Treat a Sharpe difference within 0.02 as non-inferior, then prefer fewer features and lower turnover; a candidate that beats the band on Sharpe wins outright. Post-hoc composite overlays are ineligible.
 
 ## 2010-2025 walk-forward rerun
 
@@ -16,10 +16,10 @@ Decision dates 2010-02-05 through 2025-12-31; returns realized through 2026-01-0
 
 | Policy | CAGR | Sharpe | Max DD | Calmar | Avg exposure | Annual turnover |
 |---|---:|---:|---:|---:|---:|---:|
-| v8 core (eligible) | 12.53% | 1.026 | -11.82% | 1.060 | 0.62x | 12.04 |
-| v4 core (eligible) | 12.52% | 1.021 | -11.84% | 1.058 | 0.62x | 13.67 |
-| v8 composite (post-hoc dashboard convention) | 22.20% | 1.034 | -23.13% | 0.960 | 1.14x | 19.16 |
-| v4 composite (post-hoc dashboard convention) | 22.45% | 1.037 | -22.81% | 0.984 | 1.14x | 22.43 |
+| v8 core (eligible) | 12.90% | 1.052 | -11.49% | 1.123 | 0.63x | 12.03 |
+| v4 core (eligible) | 13.19% | 1.047 | -12.21% | 1.081 | 0.64x | 13.70 |
+| v8 composite (post-hoc dashboard convention) | 22.88% | 1.057 | -21.62% | 1.058 | 1.14x | 19.08 |
+| v4 composite (post-hoc dashboard convention) | 23.45% | 1.055 | -23.14% | 1.013 | 1.17x | 21.12 |
 | VT10 rule | 12.53% | 1.033 | -11.62% | 1.079 | 0.64x | 5.27 |
 | VT20 rule | 22.22% | 1.041 | -21.86% | 1.017 | 1.17x | 6.62 |
 | QQQ | 20.66% | 0.947 | -29.56% | 0.699 | 1.00x | 0.53 |
@@ -30,10 +30,10 @@ The composite rows above reproduce the archived dashboard's continuous-VT anchor
 
 | Policy | CAGR | Sharpe | Max DD | Calmar | Avg exposure | Annual turnover |
 |---|---:|---:|---:|---:|---:|---:|
-| v8 core (eligible) | 11.72% | 0.954 | -11.68% | 1.004 | 0.62x | 12.02 |
-| v4 core (eligible) | 11.43% | 0.924 | -12.24% | 0.933 | 0.62x | 13.65 |
-| v8 composite (post-hoc dashboard convention) | 20.41% | 0.956 | -24.05% | 0.849 | 1.13x | 19.13 |
-| v4 composite (post-hoc dashboard convention) | 19.86% | 0.928 | -24.54% | 0.809 | 1.13x | 22.39 |
+| v8 core (eligible) | 11.98% | 0.971 | -11.86% | 1.011 | 0.62x | 12.01 |
+| v4 core (eligible) | 11.92% | 0.938 | -12.85% | 0.927 | 0.64x | 13.67 |
+| v8 composite (post-hoc dashboard convention) | 21.18% | 0.983 | -24.24% | 0.874 | 1.14x | 19.05 |
+| v4 composite (post-hoc dashboard convention) | 20.65% | 0.940 | -26.65% | 0.775 | 1.17x | 21.08 |
 | VT10 rule | 12.03% | 0.988 | -11.89% | 1.012 | 0.64x | 5.26 |
 | VT20 rule | 20.99% | 0.987 | -21.73% | 0.966 | 1.17x | 6.60 |
 | QQQ | 20.66% | 0.947 | -29.56% | 0.699 | 1.00x | 0.53 |

@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta
       name="description"
-      content="Verified browser deployment of the RLQQQ v8 core, its official model benchmark, and an archived v4 research replay."
+      content="Verified browser deployment of the RLQQQ v10 macro core, its official model benchmark, and an archived v4 research replay."
     >
     <meta name="theme-color" content="#f4f6f3">
-    <title>RLQQQ v8 Core Deployment</title>
+    <title>RLQQQ v10 Macro Core Deployment</title>
     <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="assets/dashboard.css">
     <script defer src="assets/lucide.min.js"></script>
@@ -28,7 +28,7 @@
         </a>
 
         <nav class="top-nav" aria-label="Dashboard sections">
-          <a href="#deployment">v8 winner</a>
+          <a href="#deployment">v10 winner</a>
           <a href="#live">Live core</a>
           <a href="#benchmark">Benchmark</a>
           <a href="#replay">Archive</a>
@@ -53,9 +53,9 @@
             <span class="status-dot" aria-hidden="true"></span>
             v8 deployment winner · one model deployed · paper only
           </div>
-          <h1 id="page-title">v8 core is the browser deployment winner</h1>
+          <h1 id="page-title">v10 macro core is the browser deployment winner</h1>
           <p>
-            The browser deploys only the frozen v8 no-calendar core, selected
+            The browser deploys only the frozen v10 macro (leveraged) core, selected
             from trained core policies by the official benchmark. Post-hoc
             composite overlays remain research artifacts and are never served
             as the live target. This is a research and paper-trading signal,
@@ -65,7 +65,7 @@
         <div class="overview-facts" aria-label="Deployment facts">
           <div>
             <span>Deployed policy</span>
-            <strong>v8 core only</strong>
+            <strong>v10 core only</strong>
           </div>
           <div>
             <span>Deployment scope</span>
@@ -83,7 +83,7 @@
           <div class="live-heading">
             <div>
               <span class="section-kicker">Deployed model · latest delayed close</span>
-              <h2 id="live-title">v8 core browser research deployment</h2>
+              <h2 id="live-title">v10 macro core browser research deployment</h2>
               <p>One frozen model; QQQ core exposure for the next close-to-close session</p>
             </div>
             <div class="live-freshness">
@@ -155,7 +155,7 @@
           <div class="live-grid" id="live-grid" aria-busy="true">
             <article class="live-signal-panel">
               <div class="live-panel-label">
-                <span>Deployed v8 core</span>
+                <span>Deployed v10 core</span>
                 <span class="stance-badge is-defensive" id="live-stance">--</span>
               </div>
               <div class="live-target">
@@ -166,7 +166,7 @@
                 class="live-gauge"
                 id="live-gauge"
                 role="img"
-                aria-label="Current v8 core exposure on a zero to one times scale"
+                aria-label="Current v10 core exposure on a zero to one-point-five times scale"
               >
                 <span id="live-gauge-fill"></span>
                 <i id="live-gauge-range"></i>
@@ -233,10 +233,10 @@
               <div class="live-path-heading">
                 <div>
                   <span class="section-kicker">Recent behavior</span>
-                  <h3>90-session v8 core path</h3>
+                  <h3>90-session v10 core path</h3>
                 </div>
                 <div class="chart-legend" aria-label="Live signal chart series">
-                  <span><i class="legend-swatch learned-swatch"></i>Deployed v8 core</span>
+                  <span><i class="legend-swatch learned-swatch"></i>Deployed v10 core</span>
                   <span><i class="legend-swatch rule-swatch"></i>VT10 anchor</span>
                   <span><i class="range-swatch"></i>Seed range</span>
                 </div>
@@ -245,7 +245,7 @@
                 <canvas
                   id="live-chart"
                   role="img"
-                  aria-label="Recent deployed v8 core exposure, volatility anchor, and ensemble seed range on a zero to one times scale"
+                  aria-label="Recent deployed v10 core exposure, volatility anchor, and ensemble seed range on a zero to one-point-five times scale"
                 ></canvas>
                 <div class="live-chart-message" id="live-chart-message" role="status">
                   Loading forward signal path
@@ -257,7 +257,7 @@
           <aside class="live-disclosure" aria-label="Live signal limitations">
             <i data-lucide="flask-conical" aria-hidden="true"></i>
             <p>
-              <strong>v8 core is the sole deployed policy.</strong>
+              <strong>v10 macro core is the sole deployed policy.</strong>
               Official 2010-2025 benchmark: 12.53% CAGR, 1.026 Sharpe,
               -11.82% maximum drawdown, and 1.060 Calmar. The long-only core is
               capped at 1.0x. Its current target appears only after this
@@ -304,7 +304,7 @@
                 <span id="benchmark-evaluated">Evaluation pending</span>
               </div>
               <span class="section-kicker">Deployment winner</span>
-              <h3 id="benchmark-winner">v8 core</h3>
+              <h3 id="benchmark-winner">v10 macro core</h3>
               <p id="benchmark-rule">
                 Loading the official selection rule from the benchmark artifact.
               </p>
@@ -414,7 +414,7 @@
             <p>
               This 2010-2025 replay preserves the earlier v4 research,
               including its post-hoc composite. None of the controls or values
-              below changes the one-model v8 core deployment above.
+              below changes the one-model v10 core deployment above.
             </p>
           </div>
           <div class="overview-facts archive-facts" aria-label="Archived replay facts">
@@ -827,7 +827,7 @@
               <h2 id="method-title">How the research composite was assembled</h2>
             </div>
             <p>
-              This section documents the archived composite. The deployed v8
+              This section documents the archived composite. The deployed v10
               core above stops at the learned ensemble output and never applies
               this post-hoc VT20 overlay.
             </p>
@@ -912,7 +912,7 @@
     <footer>
       <div>
         <strong>RLQQQ</strong>
-        <span>v8 core deployed; v4 replay archived. Not investment advice.</span>
+        <span>v10 macro core deployed; v4/v8 replays archived. Not investment advice.</span>
       </div>
       <span id="footer-as-of">Data through July 31, 2026</span>
     </footer>
