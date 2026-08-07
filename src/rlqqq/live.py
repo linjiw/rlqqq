@@ -24,6 +24,8 @@ V8_MODEL_VERSION = "ppo_v8_nocal_frozen_2023_v1"
 LEGACY_MODEL_VERSION = "ppo_v4_resid_frozen_2023_v1"
 TRAIN_CUTOFF = "2023-12-31"
 FORWARD_START = "2026-01-01"
+LIVE_COST_BPS = 2.0
+LIVE_BORROW_SPREAD_BPS = 50.0
 RESIDUAL_MULTIPLIERS = np.array([0.5, 1.0, 1.5], dtype=np.float64)
 CROSS_ASSET_FEATURE_NAMES = [
     "spx_ratio_mom_63",
@@ -393,6 +395,7 @@ def load_checked_market_frames(raw_dir: str | Path) -> dict[str, pd.DataFrame]:
 
     frames = {
         "QQQ": read("yf_QQQ.csv", "QQQ"),
+        "SPY": read("yf_SPY.csv", "SPY"),
         "^VIX": read("yf_IDX_VIX.csv", "^VIX"),
         "^TNX": read("yf_IDX_TNX.csv", "^TNX"),
         "^IRX": read("yf_IDX_IRX.csv", "^IRX"),
@@ -419,7 +422,16 @@ def fetch_yahoo_market_frames(
     import yfinance as yf
 
     frames: dict[str, pd.DataFrame] = {}
-    for symbol in ["QQQ", "^VIX", "^TNX", "^IRX", "^GSPC", "TLT", "GLD"]:
+    for symbol in [
+        "QQQ",
+        "SPY",
+        "^VIX",
+        "^TNX",
+        "^IRX",
+        "^GSPC",
+        "TLT",
+        "GLD",
+    ]:
         last_error: Exception | None = None
         for attempt in range(retries):
             try:
@@ -461,7 +473,7 @@ def validate_latest_market_frames(
     decision must never be produced by silently carrying an old VIX or yield
     observation into a newer QQQ close.
     """
-    required = ("QQQ", "^VIX", "^TNX", "^IRX")
+    required = ("QQQ", "SPY", "^VIX", "^TNX", "^IRX")
     missing = [symbol for symbol in required if symbol not in frames]
     if missing:
         raise ValueError(f"Market inputs are missing feeds: {missing}")
@@ -581,6 +593,231 @@ def stance_for_exposure(exposure: float) -> str:
     if exposure < 1.20:
         return "Fully invested"
     return "Levered"
+
+
+def _live_portfolio_returns(
+    exposure: np.ndarray,
+    asset_return: np.ndarray,
+    cash_return: np.ndarray,
+    *,
+    cost_bps: float = LIVE_COST_BPS,
+    borrow_spread_bps: float = LIVE_BORROW_SPREAD_BPS,
+    w_init: float = 0.0,
+) -> np.ndarray:
+    """Apply the research accounting identity without the training stack."""
+    weight = np.asarray(exposure, dtype=np.float64)
+    returns = np.asarray(asset_return, dtype=np.float64)
+    cash = np.asarray(cash_return, dtype=np.float64)
+    if not (weight.shape == returns.shape == cash.shape):
+        raise ValueError("Live performance arrays must have identical shapes")
+    previous = np.concatenate([[w_init], weight[:-1]])
+    turnover = np.abs(weight - previous)
+    cash_leg = np.where(
+        weight <= 1.0,
+        (1.0 - weight) * cash,
+        -(weight - 1.0)
+        * (cash + borrow_spread_bps / 10_000.0 / 252.0),
+    )
+    return (
+        weight * returns
+        + cash_leg
+        - (cost_bps / 10_000.0) * turnover
+    )
+
+
+def _live_metrics(
+    net_return: np.ndarray,
+    cash_return: np.ndarray,
+    exposure: np.ndarray,
+) -> dict:
+    net = np.asarray(net_return, dtype=np.float64)
+    cash = np.asarray(cash_return, dtype=np.float64)
+    weight = np.asarray(exposure, dtype=np.float64)
+    if len(net) == 0:
+        raise ValueError("Cannot summarize an empty live performance period")
+
+    wealth = np.concatenate([[1.0], np.cumprod(1.0 + net)])
+    drawdown = wealth / np.maximum.accumulate(wealth) - 1.0
+    volatility = (
+        float(net.std(ddof=1) * np.sqrt(252)) if len(net) > 1 else np.nan
+    )
+    excess = net - cash
+    excess_std = float(excess.std(ddof=1)) if len(excess) > 1 else np.nan
+    sharpe = (
+        float(excess.mean() / excess_std * np.sqrt(252))
+        if np.isfinite(excess_std) and excess_std > 0
+        else np.nan
+    )
+
+    def optional_number(value: float, digits: int = 6) -> float | None:
+        return _number(value, digits) if np.isfinite(value) else None
+
+    return {
+        "days": int(len(net)),
+        "totalReturn": _number(wealth[-1] - 1.0),
+        "annualizedVolatility": optional_number(volatility),
+        "sharpe": optional_number(sharpe, 4),
+        "maxDrawdown": _number(drawdown.min()),
+        "bestDay": _number(net.max()),
+        "worstDay": _number(net.min()),
+        "positiveDayRate": _number(np.mean(net > 0)),
+        "averageExposure": _number(weight.mean(), 4),
+    }
+
+
+def build_live_performance_payload(
+    replay: pd.DataFrame,
+    frames: Mapping[str, pd.DataFrame],
+) -> dict:
+    """Score completed frozen-policy decisions against QQQ and SPY.
+
+    A decision at close ``t`` is applied to the adjusted-close return from
+    ``t`` to the following session. The final replay row is therefore an
+    unscored target and is excluded from all return statistics.
+    """
+    if len(replay) < 2:
+        raise ValueError("At least two replay rows are required for performance")
+    missing = [symbol for symbol in ("QQQ", "SPY", "^IRX") if symbol not in frames]
+    if missing:
+        raise ValueError(f"Live performance inputs are missing feeds: {missing}")
+
+    replay_dates = pd.DatetimeIndex(replay.index)
+    decision_dates = replay_dates[:-1]
+    realized_dates = replay_dates[1:]
+
+    asset_returns: dict[str, np.ndarray] = {}
+    for symbol in ("QQQ", "SPY"):
+        adjusted = frames[symbol]["adj_close"].reindex(replay_dates)
+        if adjusted.isna().any():
+            missing_dates = replay_dates[adjusted.isna()]
+            raise ValueError(
+                f"{symbol} is missing live performance dates beginning "
+                f"{missing_dates[0].date()}"
+            )
+        values = adjusted.to_numpy(dtype=np.float64)
+        asset_returns[symbol] = values[1:] / values[:-1] - 1.0
+
+    irx = pd.to_numeric(frames["^IRX"]["Close"], errors="coerce")
+    cash = (
+        irx.reindex(decision_dates, method="ffill").to_numpy(dtype=np.float64)
+        / 100.0
+        / 252.0
+    )
+    if not np.isfinite(cash).all():
+        raise ValueError("Cash returns are incomplete for live performance")
+
+    exposure = replay["learned_mean"].iloc[:-1].to_numpy(dtype=np.float64)
+    benchmark_exposure = np.ones(len(decision_dates), dtype=np.float64)
+    net = {
+        "rlqqq": _live_portfolio_returns(
+            exposure, asset_returns["QQQ"], cash
+        ),
+        "qqq": _live_portfolio_returns(
+            benchmark_exposure, asset_returns["QQQ"], cash
+        ),
+        "spy": _live_portfolio_returns(
+            benchmark_exposure, asset_returns["SPY"], cash
+        ),
+    }
+    wealth = {
+        key: np.concatenate([[1.0], np.cumprod(1.0 + values)])
+        for key, values in net.items()
+    }
+
+    latest = realized_dates[-1]
+    period_specs = (
+        ("1m", "1M", latest - pd.DateOffset(months=1)),
+        ("3m", "3M", latest - pd.DateOffset(months=3)),
+        ("ytd", "YTD", pd.Timestamp(year=latest.year, month=1, day=1)),
+        ("1y", "1Y", latest - pd.DateOffset(years=1)),
+        ("all", "Since launch", replay_dates[0]),
+    )
+    periods: dict[str, dict] = {}
+    realized_values = realized_dates.to_numpy(dtype="datetime64[ns]")
+    for key, label, cutoff in period_specs:
+        if key == "all":
+            start_index = 0
+        else:
+            start_index = int(
+                np.searchsorted(
+                    realized_values,
+                    np.datetime64(cutoff),
+                    side="right",
+                )
+            )
+            start_index = min(start_index, len(realized_dates) - 1)
+        period_slice = slice(start_index, len(realized_dates))
+        period_exposure = exposure[period_slice]
+        complete = key == "all" or replay_dates[0] <= cutoff
+        periods[key] = {
+            "label": label,
+            "requestedStart": str(pd.Timestamp(cutoff).date()),
+            "start": str(replay_dates[start_index].date()),
+            "firstRealized": str(realized_dates[start_index].date()),
+            "end": str(latest.date()),
+            "startIndex": start_index,
+            "complete": bool(complete),
+            "metrics": {
+                "rlqqq": _live_metrics(
+                    net["rlqqq"][period_slice],
+                    cash[period_slice],
+                    period_exposure,
+                ),
+                "qqq": _live_metrics(
+                    net["qqq"][period_slice],
+                    cash[period_slice],
+                    benchmark_exposure[period_slice],
+                ),
+                "spy": _live_metrics(
+                    net["spy"][period_slice],
+                    cash[period_slice],
+                    benchmark_exposure[period_slice],
+                ),
+            },
+        }
+
+    chart_dates = [str(replay_dates[0].date())] + [
+        str(date.date()) for date in realized_dates
+    ]
+    return {
+        "schemaVersion": 1,
+        "inceptionDate": str(replay_dates[0].date()),
+        "firstRealizedDate": str(realized_dates[0].date()),
+        "through": str(latest.date()),
+        "decisionThrough": str(decision_dates[-1].date()),
+        "unscoredSignalAsOf": str(replay_dates[-1].date()),
+        "latestSignalScored": False,
+        "benchmarks": {
+            "qqq": "QQQ buy and hold",
+            "spy": "S&P 500 via SPY",
+        },
+        "accounting": {
+            "decisionTiming": "Close t target applied to close t through close t+1",
+            "transactionCostBps": LIVE_COST_BPS,
+            "borrowSpreadBps": LIVE_BORROW_SPREAD_BPS,
+            "cashRate": "^IRX / 100 / 252",
+            "priceField": "Yahoo adjusted close",
+        },
+        "periods": periods,
+        "chart": {
+            "dates": chart_dates,
+            "rlqqqWealth": [_number(value, 8) for value in wealth["rlqqq"]],
+            "qqqWealth": [_number(value, 8) for value in wealth["qqq"]],
+            "spyWealth": [_number(value, 8) for value in wealth["spy"]],
+        },
+        "daily": {
+            "realizedDates": [str(date.date()) for date in realized_dates],
+            "rlqqqReturn": [_number(value, 8) for value in net["rlqqq"]],
+            "qqqReturn": [_number(value, 8) for value in net["qqq"]],
+            "spyReturn": [_number(value, 8) for value in net["spy"]],
+        },
+        "actions": {
+            "dates": [str(date.date()) for date in replay_dates],
+            "targetExposure": [
+                _number(value, 5) for value in replay["learned_mean"]
+            ],
+        },
+    }
 
 
 def _iso_utc(now: datetime | None = None) -> str:
@@ -759,6 +996,7 @@ def build_signal_payload(
     replay: pd.DataFrame,
     ensemble: FrozenActorEnsemble,
     source_name: str,
+    market_frames: Mapping[str, pd.DataFrame],
     generated_at: datetime | None = None,
     history_days: int = 90,
 ) -> dict:
@@ -858,6 +1096,7 @@ def build_signal_payload(
                 _number(value, 5) for value in recent["composite_exposure"]
             ],
         },
+        "performance": build_live_performance_payload(replay, market_frames),
         "limitations": [
             "Research output, not personalized investment advice or an execution order.",
             "Yahoo data is delayed and may be revised; the signal is not intraday.",
@@ -868,7 +1107,7 @@ def build_signal_payload(
             ),
             (
                 "The composite is retained only for parity and research audit; "
-                "the deployed target is the v8 core exposure."
+                "the deployed target is the v10 core exposure."
             ),
         ],
     }

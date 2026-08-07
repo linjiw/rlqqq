@@ -123,11 +123,12 @@ def test_current_actor_uses_no_calendar_features():
 
 
 def test_signal_contract_reproduces_latest_snapshot(tmp_path):
-    bundle, _, _, replay = checked_replay()
+    bundle, frames, _, replay = checked_replay()
     payload = build_signal_payload(
         replay,
         bundle,
         source_name="Yahoo Finance checked snapshot",
+        market_frames=frames,
         generated_at=datetime(2026, 8, 1, 12, tzinfo=timezone.utc),
     )
     assert payload["asOf"] == "2026-07-31"
@@ -143,6 +144,52 @@ def test_signal_contract_reproduces_latest_snapshot(tmp_path):
     assert payload["model"]["version"] == MODEL_VERSION
     assert payload["model"]["displayName"] == "v10 macro (leveraged)"
     assert payload["model"]["featureCount"] == 28
+    performance = payload["performance"]
+    assert performance["inceptionDate"] == "2026-01-02"
+    assert performance["through"] == "2026-07-31"
+    assert performance["decisionThrough"] == "2026-07-30"
+    assert performance["unscoredSignalAsOf"] == payload["asOf"]
+    assert performance["latestSignalScored"] is False
+    assert len(performance["daily"]["realizedDates"]) == len(replay) - 1
+    assert len(performance["chart"]["dates"]) == len(replay)
+    assert len(performance["actions"]["dates"]) == len(replay)
+    assert performance["periods"]["ytd"]["complete"] is False
+    assert performance["periods"]["1y"]["complete"] is False
+    assert performance["periods"]["all"]["complete"] is True
+
+    ytd = performance["periods"]["ytd"]["metrics"]
+    assert ytd["rlqqq"]["totalReturn"] == pytest.approx(0.116859, abs=1e-6)
+    assert ytd["qqq"]["totalReturn"] == pytest.approx(0.12454, abs=1e-6)
+    assert ytd["spy"]["totalReturn"] == pytest.approx(0.099069, abs=1e-6)
+
+    first_decision = replay.index[0]
+    first_realized = replay.index[1]
+    first_exposure = float(replay["learned_mean"].iloc[0])
+    first_qqq_return = (
+        frames["QQQ"].loc[first_realized, "adj_close"]
+        / frames["QQQ"].loc[first_decision, "adj_close"]
+        - 1.0
+    )
+    first_cash = (
+        frames["^IRX"]["Close"].reindex([first_decision], method="ffill").iloc[0]
+        / 100.0
+        / 252.0
+    )
+    first_cash_leg = (
+        (1.0 - first_exposure) * first_cash
+        if first_exposure <= 1.0
+        else -(first_exposure - 1.0) * (first_cash + 50.0 / 1e4 / 252.0)
+    )
+    expected_first_return = (
+        first_exposure * first_qqq_return
+        + first_cash_leg
+        - 2.0 / 1e4 * first_exposure
+    )
+    assert performance["daily"]["realizedDates"][0] == str(first_realized.date())
+    assert performance["daily"]["rlqqqReturn"][0] == pytest.approx(
+        expected_first_return,
+        abs=1e-8,
+    )
 
     signal_path = tmp_path / "signal.json"
     log_path = tmp_path / "forward.csv"

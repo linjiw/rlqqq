@@ -69,11 +69,32 @@ def test_page_exposes_only_the_benchmark_gated_v10_core_as_current():
     # public page: fail-closed live signal, honest framing, archive link
     html = (ROOT / "docs" / "index.html").read_text(encoding="utf-8")
     site_js = (ASSETS / "site.js").read_text(encoding="utf-8")
+    signal = read_json(ASSETS / "live-signal.json")
     assert "verifyBrowserPolicy" in site_js
     assert "verification failed" in site_js.lower()
     assert "not investment advice" in html
     assert "research.html" in html
     assert "browser-inference.mjs" in site_js
+    assert 'data-live-period="1m"' in html
+    assert 'data-live-period="1y"' in html
+    assert "S&amp;P 500" in html
+    assert "RLQQQ portfolio status" in html
+    assert "RLQQQ strategy design" in html
+    assert 'id="decision-allocation"' in html
+    assert 'id="live-performance-read"' in html
+    assert "renderLivePerformance" in site_js
+    assert "allocationSummary" in site_js
+    assert "latestSignalScored" in signal["performance"]
+    assert signal["performance"]["latestSignalScored"] is False
+    assert signal["performance"]["through"] == signal["asOf"]
+    assert signal["performance"]["unscoredSignalAsOf"] == signal["asOf"]
+    assert set(signal["performance"]["periods"]) == {
+        "1m",
+        "3m",
+        "ytd",
+        "1y",
+        "all",
+    }
 
     # research console (archived audit page) keeps the full benchmark contract
     research = (ROOT / "docs" / "research.html").read_text(encoding="utf-8")

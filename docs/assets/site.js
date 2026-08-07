@@ -4,6 +4,11 @@ const $ = (id) => document.getElementById(id);
 const fmtPct = (x, d = 1) => `${(x * 100).toFixed(d)}%`;
 const fmtX = (x) => `${x.toFixed(2)}×`;
 const monthFmt = new Intl.DateTimeFormat("en-US", { month: "short", year: "numeric", timeZone: "UTC" });
+const dayFmt = new Intl.DateTimeFormat("en-US", {
+  month: "short", day: "numeric", year: "numeric", timeZone: "UTC",
+});
+let livePerformanceData = null;
+let selectedLivePeriod = "ytd";
 
 /* ---------------- SVG helpers ---------------- */
 const NS = "http://www.w3.org/2000/svg";
@@ -26,7 +31,7 @@ function linePath(xs, ys) {
 }
 
 /* Crosshair + tooltip for a time-series chart. rows: [{label, color, fmt, values}] */
-function attachCrosshair(svg, tip, plot, dates, xAt, rows) {
+function attachCrosshair(svg, tip, plot, dates, xAt, rows, dateFormatter = monthFmt) {
   const hover = el("g", { style: "display:none" }, svg);
   const vline = el("line", {
     y1: plot.y, y2: plot.y + plot.h,
@@ -49,17 +54,17 @@ function attachCrosshair(svg, tip, plot, dates, xAt, rows) {
     });
     tip.style.display = "block";
     tip.innerHTML =
-      `<b>${monthFmt.format(new Date(`${dates[i]}T00:00:00Z`))}</b><br>` +
+      `<b>${dateFormatter.format(new Date(`${dates[i]}T00:00:00Z`))}</b><br>` +
       rows.map((r) => `${r.label}: <b>${r.fmt(r.values[i])}</b>`).join("<br>");
     const host = svg.parentElement.getBoundingClientRect();
     const tx = evt.clientX - host.left + 14;
     tip.style.left = `${Math.min(tx, host.width - tip.offsetWidth - 8)}px`;
     tip.style.top = `${evt.clientY - host.top - 10}px`;
   }
-  svg.addEventListener("pointermove", onMove);
-  svg.addEventListener("pointerleave", () => {
+  svg.onpointermove = onMove;
+  svg.onpointerleave = () => {
     hover.style.display = "none"; tip.style.display = "none";
-  });
+  };
 }
 
 /* ---------------- wealth chart (log scale) ---------------- */
@@ -209,7 +214,7 @@ function drawAnnual(data) {
   });
 
   const tip = $("annual-tip");
-  svg.addEventListener("pointermove", (evt) => {
+  svg.onpointermove = (evt) => {
     const rect = svg.getBoundingClientRect();
     const px = ((evt.clientX - rect.left) / rect.width) * 840;
     let best = tipRows[0];
@@ -219,8 +224,8 @@ function drawAnnual(data) {
     const host = svg.parentElement.getBoundingClientRect();
     tip.style.left = `${Math.min(evt.clientX - host.left + 14, host.width - tip.offsetWidth - 8)}px`;
     tip.style.top = `${evt.clientY - host.top - 10}px`;
-  });
-  svg.addEventListener("pointerleave", () => { tip.style.display = "none"; });
+  };
+  svg.onpointerleave = () => { tip.style.display = "none"; };
 
   const tbody = $("annual-table").querySelector("tbody");
   tbody.replaceChildren();
@@ -231,7 +236,280 @@ function drawAnnual(data) {
   });
 }
 
-/* ---------------- stats, stress, ytd ---------------- */
+/* ---------------- live performance ---------------- */
+function fmtMaybePct(value, digits = 1) {
+  return value == null ? "–" : fmtPct(value, digits);
+}
+
+function fmtMaybeNumber(value, digits = 2) {
+  return value == null ? "–" : value.toFixed(digits);
+}
+
+function fmtPointDifference(value) {
+  return `${Math.abs(value * 100).toFixed(1)} percentage points`;
+}
+
+function allocationSummary(exposure) {
+  if (exposure <= 1) {
+    return `${(exposure * 100).toFixed(1)}% QQQ · ${((1 - exposure) * 100).toFixed(1)}% T-bill cash`;
+  }
+  return `100.0% QQQ · ${((exposure - 1) * 100).toFixed(1)}% financed QQQ`;
+}
+
+function formatDate(date) {
+  return dayFmt.format(new Date(`${date}T00:00:00Z`));
+}
+
+function xLabels(svg, dates, plot, xAt) {
+  const positions = [...new Set([0, Math.floor((dates.length - 1) / 2), dates.length - 1])];
+  for (const index of positions) {
+    el("text", {
+      x: xAt(index),
+      y: plot.y + plot.h + 22,
+      "text-anchor": index === 0 ? "start" : index === dates.length - 1 ? "end" : "middle",
+    }, svg).textContent = dayFmt.format(new Date(`${dates[index]}T00:00:00Z`));
+  }
+}
+
+function drawLiveGrowth(performance, period) {
+  const svg = $("live-growth-chart");
+  svg.replaceChildren();
+  const start = period.startIndex;
+  const dates = performance.chart.dates.slice(start);
+  const base = 10000;
+  const rawSeries = [
+    {
+      label: "RLQQQ",
+      color: css("--series-model"),
+      values: performance.chart.rlqqqWealth.slice(start),
+      width: 2.6,
+    },
+    {
+      label: "QQQ",
+      color: css("--series-qqq"),
+      values: performance.chart.qqqWealth.slice(start),
+      width: 1.9,
+    },
+    {
+      label: "S&P 500",
+      color: css("--series-spy"),
+      values: performance.chart.spyWealth.slice(start),
+      width: 1.9,
+    },
+  ];
+  const series = rawSeries.map((item) => ({
+    ...item,
+    values: item.values.map((value) => (value / item.values[0]) * base),
+  }));
+  const all = series.flatMap((item) => item.values);
+  const spread = Math.max(Math.max(...all) - Math.min(...all), 100);
+  const lo = Math.min(...all) - spread * 0.12;
+  const hi = Math.max(...all) + spread * 0.12;
+  const plot = { x: 68, y: 14, w: 840 - 68 - 18, h: 300 - 14 - 38 };
+  const xAt = (index) => plot.x + (index / Math.max(1, dates.length - 1)) * plot.w;
+  const yAt = (value) => plot.y + ((hi - value) / (hi - lo)) * plot.h;
+
+  for (let tick = 0; tick < 5; tick += 1) {
+    const value = lo + ((hi - lo) * tick) / 4;
+    const y = yAt(value);
+    el("line", {
+      x1: plot.x, x2: plot.x + plot.w, y1: y, y2: y, class: "gridline",
+    }, svg);
+    el("text", {
+      x: plot.x - 8, y: y + 4, "text-anchor": "end",
+    }, svg).textContent = `$${Math.round(value).toLocaleString()}`;
+  }
+  xLabels(svg, dates, plot, xAt);
+
+  for (const item of [series[2], series[1], series[0]]) {
+    el("path", {
+      d: linePath(item.values.map((_, index) => xAt(index)), item.values.map(yAt)),
+      fill: "none",
+      stroke: item.color,
+      "stroke-width": item.width,
+      "stroke-linejoin": "round",
+      "stroke-linecap": "round",
+    }, svg);
+  }
+
+  attachCrosshair(
+    svg,
+    $("live-growth-tip"),
+    plot,
+    dates,
+    xAt,
+    series.map((item) => ({
+      label: item.label,
+      color: item.color,
+      values: item.values,
+      yAt,
+      fmt: (value) => `$${Math.round(value).toLocaleString()}`,
+    })),
+    dayFmt,
+  );
+}
+
+function drawLiveExposure(performance, period) {
+  const svg = $("live-exposure-chart");
+  svg.replaceChildren();
+  const start = Math.min(period.startIndex, performance.actions.dates.length - 1);
+  const dates = performance.actions.dates.slice(start);
+  const values = performance.actions.targetExposure.slice(start);
+  const plot = { x: 58, y: 14, w: 840 - 58 - 18, h: 300 - 14 - 38 };
+  const xAt = (index) => plot.x + (index / Math.max(1, dates.length - 1)) * plot.w;
+  const yAt = (value) => plot.y + plot.h - (value / 1.5) * plot.h;
+
+  for (const tick of [0, 0.5, 1.0, 1.5]) {
+    const y = yAt(tick);
+    el("line", {
+      x1: plot.x,
+      x2: plot.x + plot.w,
+      y1: y,
+      y2: y,
+      class: tick === 1 ? "axisline" : "gridline",
+      "stroke-dasharray": tick === 1 ? "4,4" : "",
+    }, svg);
+    el("text", {
+      x: plot.x - 8, y: y + 4, "text-anchor": "end",
+    }, svg).textContent = `${tick.toFixed(1)}×`;
+  }
+  xLabels(svg, dates, plot, xAt);
+
+  const path = linePath(values.map((_, index) => xAt(index)), values.map(yAt));
+  const area = `${path}L${xAt(values.length - 1).toFixed(1)},${yAt(0).toFixed(1)}` +
+    `L${xAt(0).toFixed(1)},${yAt(0).toFixed(1)}Z`;
+  el("path", {
+    d: area, fill: css("--series-model"), opacity: 0.1, stroke: "none",
+  }, svg);
+  el("path", {
+    d: path,
+    fill: "none",
+    stroke: css("--series-model"),
+    "stroke-width": 2.4,
+    "stroke-linejoin": "round",
+    "stroke-linecap": "round",
+  }, svg);
+
+  attachCrosshair(
+    svg,
+    $("live-exposure-tip"),
+    plot,
+    dates,
+    xAt,
+    [{
+      label: "Target",
+      color: css("--series-model"),
+      values,
+      yAt,
+      fmt: fmtX,
+    }],
+    dayFmt,
+  );
+}
+
+function renderLiveComparison(metrics) {
+  const rows = [
+    { key: "rlqqq", label: "RLQQQ", dot: "" },
+    { key: "qqq", label: "QQQ buy & hold", dot: "qqq" },
+    { key: "spy", label: "S&P 500 (SPY)", dot: "spy" },
+  ];
+  const tbody = $("live-comparison-body");
+  tbody.replaceChildren();
+  for (const row of rows) {
+    const values = metrics[row.key];
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td><span class="series-label"><span class="series-dot ${row.dot}"></span>${row.label}</span></td>
+      <td>${fmtMaybePct(values.totalReturn)}</td>
+      <td>${fmtMaybePct(values.annualizedVolatility)}</td>
+      <td>${fmtMaybeNumber(values.sharpe)}</td>
+      <td>${fmtMaybePct(values.maxDrawdown)}</td>
+      <td>${fmtX(values.averageExposure)}</td>
+    `;
+    tbody.appendChild(tr);
+  }
+}
+
+function renderLivePeriod(key) {
+  if (!livePerformanceData) return;
+  const period = livePerformanceData.periods[key] || livePerformanceData.periods.all;
+  selectedLivePeriod = key in livePerformanceData.periods ? key : "all";
+  const { rlqqq, qqq, spy } = period.metrics;
+
+  document.querySelectorAll("[data-live-period]").forEach((button) => {
+    const active = button.dataset.livePeriod === selectedLivePeriod;
+    button.classList.toggle("active", active);
+    button.setAttribute("aria-pressed", active ? "true" : "false");
+  });
+
+  $("live-return").textContent = fmtMaybePct(rlqqq.totalReturn);
+  $("live-return-c").innerHTML =
+    `QQQ <strong>${fmtMaybePct(qqq.totalReturn)}</strong> &middot; ` +
+    `S&amp;P 500 <strong>${fmtMaybePct(spy.totalReturn)}</strong>`;
+  $("live-vol").textContent = fmtMaybePct(rlqqq.annualizedVolatility);
+  $("live-vol-c").innerHTML =
+    `QQQ <strong>${fmtMaybePct(qqq.annualizedVolatility)}</strong> &middot; ` +
+    `S&amp;P 500 <strong>${fmtMaybePct(spy.annualizedVolatility)}</strong>`;
+  $("live-sharpe").textContent = fmtMaybeNumber(rlqqq.sharpe);
+  $("live-sharpe-c").innerHTML =
+    `QQQ <strong>${fmtMaybeNumber(qqq.sharpe)}</strong> &middot; ` +
+    `S&amp;P 500 <strong>${fmtMaybeNumber(spy.sharpe)}</strong>`;
+  $("live-dd").textContent = fmtMaybePct(rlqqq.maxDrawdown);
+  $("live-dd-c").innerHTML =
+    `QQQ <strong>${fmtMaybePct(qqq.maxDrawdown)}</strong> &middot; ` +
+    `S&amp;P 500 <strong>${fmtMaybePct(spy.maxDrawdown)}</strong>`;
+
+  const qqqReturnGap = rlqqq.totalReturn - qqq.totalReturn;
+  const spyReturnGap = rlqqq.totalReturn - spy.totalReturn;
+  const qqqVolGap = rlqqq.annualizedVolatility - qqq.annualizedVolatility;
+  $("live-performance-read").textContent =
+    `RLQQQ ${qqqReturnGap >= 0 ? "led" : "trailed"} QQQ by ` +
+    `${fmtPointDifference(qqqReturnGap)} while running ` +
+    `${fmtPointDifference(qqqVolGap)} ${qqqVolGap <= 0 ? "less" : "more"} annualized volatility. ` +
+    `It ${spyReturnGap >= 0 ? "led" : "trailed"} the S&P 500 by ` +
+    `${fmtPointDifference(spyReturnGap)} with an average ` +
+    `${fmtX(rlqqq.averageExposure)} QQQ target.`;
+
+  $("live-period-dates").textContent = period.complete
+    ? `${formatDate(period.start)} to ${formatDate(period.end)}`
+    : selectedLivePeriod === "ytd"
+      ? `YTD from activation · ${formatDate(period.start)} to ${formatDate(period.end)}`
+      : `${period.label} requested · available ${formatDate(period.start)} to ${formatDate(period.end)}`;
+  $("live-session-count").textContent = `${rlqqq.days} completed sessions`;
+  renderLiveComparison(period.metrics);
+  drawLiveGrowth(livePerformanceData, period);
+  drawLiveExposure(livePerformanceData, period);
+}
+
+function renderLivePerformance(performance) {
+  if (!performance || performance.schemaVersion !== 1) {
+    throw new Error("Live performance payload is missing or unsupported");
+  }
+  const chartLength = performance.chart.dates.length;
+  if (
+    chartLength < 2 ||
+    performance.chart.rlqqqWealth.length !== chartLength ||
+    performance.chart.qqqWealth.length !== chartLength ||
+    performance.chart.spyWealth.length !== chartLength
+  ) {
+    throw new Error("Live performance chart series are not date aligned");
+  }
+  livePerformanceData = performance;
+  $("portfolio-live-since").textContent = `Since ${formatDate(performance.inceptionDate)}`;
+  $("live-auto-status").textContent = `Auto-updated through ${formatDate(performance.through)}`;
+  $("live-performance-note").textContent =
+    `Performance through ${formatDate(performance.through)} scores targets through ` +
+    `${formatDate(performance.decisionThrough)}. The ${formatDate(performance.unscoredSignalAsOf)} ` +
+    `target remains unscored. Returns include ${performance.accounting.transactionCostBps.toFixed(0)} bp ` +
+    `one-way trading costs, T-bill cash, and T-bill + ` +
+    `${performance.accounting.borrowSpreadBps.toFixed(0)} bp financing above 1.0×.`;
+  document.querySelectorAll("[data-live-period]").forEach((button) => {
+    button.onclick = () => renderLivePeriod(button.dataset.livePeriod);
+  });
+  renderLivePeriod(selectedLivePeriod);
+}
+
+/* ---------------- historical stats and stress ---------------- */
 function renderStats(data) {
   const { v10, qqq } = data.stats;
   $("t-cagr").textContent = fmtPct(v10.cagr);
@@ -249,14 +527,6 @@ function renderStats(data) {
   $("s-qqq-cagr").textContent = fmtPct(Math.abs(data.era.qqq.cagr));
   $("s-sig").textContent =
     `${data.era.window}. ${data.era.significant} — the one comparison in this study that clears statistical significance.`;
-
-  const y = data.ytd2026;
-  $("ytd-line").textContent =
-    `Through ${y.through}: model ${fmtPct(y.v10Return)} vs QQQ ${fmtPct(y.qqqReturn)} ` +
-    `(Sharpe ${y.v10.sharpe.toFixed(2)} vs ${y.qqq.sharpe.toFixed(2)}), with a ` +
-    `${fmtPct(y.v10.maxDD)} vs ${fmtPct(y.qqq.maxDD)} worst drawdown. A calm bull market ` +
-    `is the regime where buy & hold is hardest to beat — the model's job is to keep up ` +
-    `here and win when it storms.`;
 }
 
 /* ---------------- live signal (ONNX-verified) ---------------- */
@@ -264,6 +534,7 @@ async function loadLive() {
   const badge = $("verify-badge");
   try {
     const signalRes = await fetch("assets/live-signal.json", { cache: "no-store" });
+    if (!signalRes.ok) throw new Error(`Live data request failed with status ${signalRes.status}`);
     const payload = await signalRes.json();
 
     // Show market state immediately (display-only fields).
@@ -275,6 +546,8 @@ async function loadLive() {
     $("m-vix").textContent = m.vix.toFixed(1);
     $("m-anchor").textContent = fmtX(payload.signal.vt10Exposure);
     $("m-tilt").textContent = fmtX(payload.signal.tiltMultiplier);
+    $("decision-allocation").textContent = allocationSummary(payload.signal.learnedMean);
+    $("decision-explanation").textContent = payload.signal.explanation;
     const asOfDate = new Date(`${payload.asOf}T21:00:00Z`);
     const ageDays = Math.floor((Date.now() - asOfDate.getTime()) / 86_400_000);
     const freshness = ageDays <= 0 ? "latest completed session"
@@ -282,6 +555,13 @@ async function loadLive() {
       : "refresh overdue — see research console";
     $("decision-asof").textContent =
       `As of the ${payload.asOf} close · ${freshness} · model ${payload.model.displayName}, frozen ${payload.model.trainCutoff}`;
+    try {
+      renderLivePerformance(payload.performance);
+    } catch (performanceError) {
+      $("live-auto-status").textContent = "Live performance unavailable";
+      $("live-performance-note").textContent = performanceError.message;
+      console.error("live performance failed:", performanceError);
+    }
 
     // Fail-closed browser verification via the existing module.
     const mod = await import("./browser-inference.mjs");
@@ -315,7 +595,11 @@ async function boot() {
   drawDrawdown(data);
   drawAnnual(data);
   const redraw = () => { drawWealth(data); drawDrawdown(data); drawAnnual(data); };
-  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redraw);
+  const redrawAll = () => {
+    redraw();
+    if (livePerformanceData) renderLivePeriod(selectedLivePeriod);
+  };
+  window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", redrawAll);
   loadLive();
 }
 boot();

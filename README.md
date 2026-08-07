@@ -29,9 +29,12 @@ replays the complete state path before it reveals the latest exposure.
 
 GitHub Actions still performs the scheduled delayed-market refresh. It writes
 static raw policy inputs, an independent Python reference, and the latest
-signal metadata, so the browser calls no market-data API and receives no API
-key. Verify the checked release and run the same end-to-end browser check
-locally with:
+signal metadata. The same refresh scores every completed frozen-policy
+decision after costs and rebuilds the public `1M`, `3M`, `YTD`, `1Y`, and
+since-launch comparisons against QQQ and SPY. The newest signal remains
+unscored until the next close. The browser calls no market-data API and
+receives no API key. Verify the checked release and run the same end-to-end
+browser check locally with:
 
 ```bash
 .venv/bin/python scripts/update_live_signal.py \

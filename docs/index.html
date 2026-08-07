@@ -22,6 +22,7 @@
         --series-model: #2a78d6;
         --series-qqq: #eb6834;
         --series-rule: #1baf7a;
+        --series-spy: #427f68;
         --good-bg: #e7f3ea;
         --good-fg: #1c6b31;
         --warn-bg: #fdf0e5;
@@ -40,6 +41,7 @@
           --series-model: #3987e5;
           --series-qqq: #d95926;
           --series-rule: #199e70;
+          --series-spy: #54a888;
           --good-bg: #12301b;
           --good-fg: #7fce96;
           --warn-bg: #3a2410;
@@ -80,15 +82,44 @@
       header.site .brand { font-weight: 700; letter-spacing: 0.02em; }
       header.site nav a { margin-left: 18px; font-size: 0.9rem; text-decoration: none; }
       header.site nav a:hover { text-decoration: underline; }
+      @media (max-width: 680px) {
+        header.site { align-items: center; flex-wrap: wrap; gap: 12px; padding-bottom: 24px; }
+        header.site nav {
+          display: flex; gap: 16px; width: 100%; overflow-x: auto;
+          padding-bottom: 3px; white-space: nowrap;
+        }
+        header.site nav a { margin-left: 0; }
+      }
 
       /* ---------- hero decision ---------- */
       .hero { display: grid; grid-template-columns: 1fr; gap: 16px; }
       @media (min-width: 720px) { .hero { grid-template-columns: 5fr 4fr; } }
+      .portfolio-facts {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        margin: 18px 0 16px; border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+      .portfolio-facts > div { padding: 12px 14px; border-right: 1px solid var(--border); }
+      .portfolio-facts > div:first-child { padding-left: 0; }
+      .portfolio-facts > div:last-child { border-right: 0; }
+      .portfolio-facts span, .strategy-specs span {
+        display: block; color: var(--text-muted); font-size: 0.72rem;
+        font-weight: 600; text-transform: uppercase;
+      }
+      .portfolio-facts strong { display: block; margin-top: 2px; font-size: 0.9rem; }
       .decision-value {
         font-size: 3.4rem; font-weight: 700; letter-spacing: -0.02em; line-height: 1.05;
         font-variant-numeric: tabular-nums;
       }
       .decision-value small { font-size: 1.2rem; font-weight: 600; }
+      .allocation-read {
+        margin-top: 8px; color: var(--text-primary); font-size: 0.92rem;
+        font-weight: 600; font-variant-numeric: tabular-nums;
+      }
+      .decision-explanation {
+        margin: 12px 0 0; padding-top: 12px; border-top: 1px solid var(--border);
+        font-size: 0.84rem;
+      }
       .stance {
         display: inline-block; margin-top: 8px; padding: 3px 10px; border-radius: 99px;
         font-size: 0.82rem; font-weight: 600; background: var(--warn-bg); color: var(--warn-fg);
@@ -139,6 +170,77 @@
       .tile .k { font-size: 0.78rem; color: var(--text-muted); }
       .tile .n { font-size: 1.45rem; font-weight: 700; font-variant-numeric: tabular-nums; }
       .tile .c { font-size: 0.78rem; color: var(--text-muted); }
+      .tile .c strong { color: var(--text-secondary); font-weight: 600; }
+
+      /* ---------- live performance ---------- */
+      .section-title-row {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 12px; margin-top: 52px;
+      }
+      .section-title-row h2 { margin-top: 0; }
+      .auto-status {
+        display: inline-flex; align-items: center; gap: 7px; flex: 0 0 auto;
+        color: var(--text-muted); font-size: 0.78rem;
+      }
+      .auto-status::before {
+        width: 7px; height: 7px; border-radius: 50%;
+        background: var(--good-fg); content: "";
+      }
+      .live-toolbar {
+        display: flex; justify-content: space-between; align-items: center;
+        gap: 12px; margin-top: 18px; flex-wrap: wrap;
+      }
+      .period-control {
+        display: inline-flex; max-width: 100%; padding: 3px;
+        overflow-x: auto; border: 1px solid var(--border); border-radius: 8px;
+        background: var(--surface-1);
+      }
+      .period-control button {
+        min-width: max-content; padding: 6px 10px; border: 0; border-radius: 6px;
+        color: var(--text-secondary); background: transparent; font: inherit;
+        font-size: 0.8rem; font-weight: 600; cursor: pointer;
+      }
+      .period-control button:hover { color: var(--text-primary); }
+      .period-control button.active {
+        color: #fff; background: var(--series-model);
+      }
+      .period-dates { color: var(--text-muted); font-size: 0.8rem; }
+      .period-read {
+        margin: 14px 0 0; padding: 8px 0 8px 13px;
+        border-left: 3px solid var(--series-model);
+        color: var(--text-secondary); font-size: 0.9rem;
+      }
+      .live-chart-grid {
+        display: grid; grid-template-columns: minmax(0, 3fr) minmax(240px, 2fr);
+        gap: 12px; margin-top: 16px;
+      }
+      .live-chart-grid .chart-card { margin-top: 0; }
+      .live-chart-grid .chart-head { min-height: 44px; align-content: start; }
+      .legend .spy i { background: var(--series-spy); }
+      .legend .exposure i { background: var(--series-model); }
+      .comparison-wrap { overflow-x: auto; }
+      table.comparison {
+        width: 100%; min-width: 620px; border-collapse: collapse;
+        margin-top: 10px; font-size: 0.86rem;
+      }
+      table.comparison th, table.comparison td {
+        padding: 8px 9px; border-bottom: 1px solid var(--border);
+        text-align: right; font-variant-numeric: tabular-nums;
+      }
+      table.comparison th:first-child, table.comparison td:first-child { text-align: left; }
+      table.comparison th {
+        color: var(--text-muted); font-size: 0.75rem; font-weight: 600;
+      }
+      table.comparison tbody tr:last-child td { border-bottom: 0; }
+      .series-label { display: inline-flex; align-items: center; gap: 8px; font-weight: 600; }
+      .series-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--series-model); }
+      .series-dot.qqq { background: var(--series-qqq); }
+      .series-dot.spy { background: var(--series-spy); }
+      @media (max-width: 760px) {
+        .section-title-row { align-items: flex-start; flex-direction: column; gap: 4px; }
+        .live-chart-grid { grid-template-columns: 1fr; }
+        .live-toolbar { align-items: flex-start; flex-direction: column; }
+      }
 
       /* ---------- charts ---------- */
       .chart-card { margin-top: 16px; }
@@ -174,6 +276,28 @@
       }
       .step h3 { margin: 0 0 6px; font-size: 0.95rem; }
       .step p { margin: 0; font-size: 0.88rem; }
+      .strategy-specs {
+        display: grid; grid-template-columns: repeat(3, 1fr);
+        margin-top: 16px; border-top: 1px solid var(--border);
+        border-bottom: 1px solid var(--border);
+      }
+      .strategy-specs > div { padding: 12px 14px; border-right: 1px solid var(--border); }
+      .strategy-specs > div:nth-child(3n) { border-right: 0; }
+      .strategy-specs > div:nth-child(n + 4) { border-top: 1px solid var(--border); }
+      .strategy-specs strong { display: block; margin-top: 3px; font-size: 0.88rem; }
+      .strategy-specs small { display: block; margin-top: 2px; color: var(--text-muted); }
+      @media (max-width: 680px) {
+        .portfolio-facts { grid-template-columns: 1fr; }
+        .portfolio-facts > div, .portfolio-facts > div:first-child {
+          padding: 9px 0; border-right: 0; border-bottom: 1px solid var(--border);
+        }
+        .portfolio-facts > div:last-child { border-bottom: 0; }
+        .strategy-specs { grid-template-columns: repeat(2, 1fr); }
+        .strategy-specs > div { border-top: 0; }
+        .strategy-specs > div:nth-child(3n) { border-right: 1px solid var(--border); }
+        .strategy-specs > div:nth-child(2n) { border-right: 0; }
+        .strategy-specs > div:nth-child(n + 3) { border-top: 1px solid var(--border); }
+      }
 
       /* ---------- stress ---------- */
       .stress-grid { display: grid; grid-template-columns: 1fr; gap: 12px; margin-top: 16px; }
@@ -204,8 +328,8 @@
     <header class="site">
       <span class="brand">RLQQQ</span>
       <nav>
-        <a href="#decision">Today</a>
-        <a href="#how">How it works</a>
+        <a href="#decision">Portfolio</a>
+        <a href="#how">Strategy</a>
         <a href="#performance">Performance</a>
         <a href="research.html">Research console</a>
         <a href="https://github.com/linjiw/rlqqq">GitHub</a>
@@ -215,18 +339,25 @@
     <main>
       <!-- ================= HERO: today's decision ================= -->
       <section id="decision" aria-labelledby="decision-title">
-        <h1 id="decision-title">A reinforcement-learning risk overlay on QQQ</h1>
+        <h1 id="decision-title">RLQQQ portfolio status</h1>
         <p class="lede">
-          One frozen model, retrained never, verified in your browser. It holds a
-          volatility-managed QQQ position and tilts it up or down each day within
-          a 0&ndash;1.5&times; band.
+          A frozen reinforcement-learning strategy that holds QQQ and T-bill cash.
+          It makes one risk decision after each market close, within a
+          0&ndash;1.5&times; QQQ exposure band.
         </p>
+
+        <div class="portfolio-facts" aria-label="Portfolio facts">
+          <div><span>Portfolio</span><strong>QQQ + T-bill cash</strong></div>
+          <div><span>Decision cadence</span><strong>Daily after market close</strong></div>
+          <div><span>Forward record</span><strong id="portfolio-live-since">Since Jan 2, 2026</strong></div>
+        </div>
 
         <div class="hero">
           <div class="card">
-            <div class="k muted" style="font-size:0.82rem">Today's target exposure &middot; next close-to-close session</div>
+            <div class="k muted" style="font-size:0.82rem">Current target allocation &middot; next close-to-close session</div>
             <div class="decision-value"><span id="decision-number">&ndash;.&ndash;&ndash;</span><small>&times; QQQ</small></div>
             <span class="stance" id="decision-stance">checking&hellip;</span>
+            <div class="allocation-read" id="decision-allocation">Calculating portfolio mix&hellip;</div>
             <div class="gauge" aria-hidden="true">
               <div class="gauge-track">
                 <div class="gauge-fill" id="gauge-fill"></div>
@@ -240,10 +371,11 @@
               </span>
             </p>
             <p class="decision-meta muted" id="decision-asof">Loading latest close&hellip;</p>
+            <p class="decision-explanation" id="decision-explanation">Loading the model rationale&hellip;</p>
           </div>
 
           <div class="card">
-            <div class="k muted" style="font-size:0.82rem; margin-bottom:6px">Market state behind the decision</div>
+            <div class="k muted" style="font-size:0.82rem; margin-bottom:6px">Market inputs behind the target</div>
             <ul class="market-list" id="market-list">
               <li><span>QQQ close</span><span class="v" id="m-price">&ndash;</span></li>
               <li><span>21-day volatility (annualized)</span><span class="v" id="m-vol">&ndash;</span></li>
@@ -259,8 +391,11 @@
 
       <!-- ================= HOW IT WORKS ================= -->
       <section id="how" aria-labelledby="how-title">
-        <h2 id="how-title">How the model works</h2>
-        <p class="lede">Three moving parts, each one auditable.</p>
+        <h2 id="how-title">RLQQQ strategy design</h2>
+        <p class="lede">
+          The model does not select stocks or predict a price. It adjusts how
+          much QQQ the portfolio holds for the next session.
+        </p>
         <div class="steps">
           <div class="card step">
             <h3>A volatility anchor sets the base</h3>
@@ -272,7 +407,7 @@
             </p>
           </div>
           <div class="card step">
-            <h3>Ten neural agents tilt the anchor</h3>
+            <h3>Ten RL agents adjust the risk</h3>
             <p>
               Ten independently trained PPO agents read 28 market features
               (momentum, volatility, trend, volume, VIX, yield curve, bonds,
@@ -281,24 +416,128 @@
             </p>
           </div>
           <div class="card step">
-            <h3>What the tilt learned</h3>
+            <h3>One target becomes the portfolio</h3>
             <p>
-              Add exposure in high-volatility sell-offs when volume shows no
-              panic (buying grinding dips), trim in calm overbought markets,
-              and stand aside during liquidation events. Training used only
-              data through 2023; nothing is refit on live data.
+              The ten targets are averaged. Up to 1.0&times;, the balance earns
+              the T-bill rate in cash; above 1.0&times;, extra QQQ exposure is
+              financed at T-bill plus 50&nbsp;bp. Trading costs are included.
             </p>
           </div>
         </div>
+        <div class="strategy-specs" aria-label="RLQQQ strategy specification">
+          <div><span>Universe</span><strong>QQQ and T-bill cash</strong><small>No stock selection</small></div>
+          <div><span>Action</span><strong>0.0&times; to 1.5&times; QQQ</strong><small>One target per close</small></div>
+          <div><span>Risk anchor</span><strong>20% annualized volatility</strong><small>Causal 21-session estimate</small></div>
+          <div><span>RL policy</span><strong>10 PPO actors</strong><small>Five residual risk levels</small></div>
+          <div><span>Inputs</span><strong>28 causal features</strong><small>Trend, volatility, macro context</small></div>
+          <div><span>Frozen model</span><strong>Training cutoff Dec 31, 2023</strong><small>No live retraining</small></div>
+        </div>
       </section>
 
-      <!-- ================= PERFORMANCE ================= -->
+      <!-- ================= LIVE PERFORMANCE ================= -->
       <section id="performance" aria-labelledby="perf-title">
-        <h2 id="perf-title">Performance, 2010&ndash;2025 walk-forward</h2>
+        <div class="section-title-row">
+          <h2 id="perf-title">Portfolio performance</h2>
+          <span class="auto-status" id="live-auto-status">Loading latest close&hellip;</span>
+        </div>
         <p class="lede">
-          Every test year was out-of-sample: agents were trained only on data
-          before each test window, including 2&nbsp;bps costs, T-bill interest on cash,
-          and T-bill&nbsp;+50&nbsp;bp financing on leverage.
+          The frozen model's completed record since activation, scored after
+          costs against QQQ and the S&amp;P 500. The newest target is not counted
+          until the following market close exists.
+        </p>
+
+        <div class="live-toolbar">
+          <div class="period-control" role="group" aria-label="Live performance period">
+            <button type="button" data-live-period="1m" aria-pressed="false">1M</button>
+            <button type="button" data-live-period="3m" aria-pressed="false">3M</button>
+            <button type="button" data-live-period="ytd" class="active" aria-pressed="true">YTD</button>
+            <button type="button" data-live-period="1y" aria-pressed="false">1Y</button>
+            <button type="button" data-live-period="all" aria-pressed="false">Since launch</button>
+          </div>
+          <span class="period-dates" id="live-period-dates">Loading period&hellip;</span>
+        </div>
+
+        <div class="tiles" aria-live="polite">
+          <div class="card tile">
+            <div class="k">Total return</div>
+            <div class="n" id="live-return">&ndash;</div>
+            <div class="c" id="live-return-c">QQQ &ndash; &middot; S&amp;P 500 &ndash;</div>
+          </div>
+          <div class="card tile">
+            <div class="k">Annualized volatility</div>
+            <div class="n" id="live-vol">&ndash;</div>
+            <div class="c" id="live-vol-c">QQQ &ndash; &middot; S&amp;P 500 &ndash;</div>
+          </div>
+          <div class="card tile">
+            <div class="k">Sharpe ratio</div>
+            <div class="n" id="live-sharpe">&ndash;</div>
+            <div class="c" id="live-sharpe-c">QQQ &ndash; &middot; S&amp;P 500 &ndash;</div>
+          </div>
+          <div class="card tile">
+            <div class="k">Max drawdown</div>
+            <div class="n" id="live-dd">&ndash;</div>
+            <div class="c" id="live-dd-c">QQQ &ndash; &middot; S&amp;P 500 &ndash;</div>
+          </div>
+        </div>
+        <p class="period-read" id="live-performance-read">Loading the selected-period comparison&hellip;</p>
+
+        <div class="live-chart-grid">
+          <div class="card chart-card" style="position:relative">
+            <div class="chart-head">
+              <h3>Growth of $10,000</h3>
+              <div class="legend">
+                <span class="model"><i></i>RLQQQ</span>
+                <span class="qqq"><i></i>QQQ</span>
+                <span class="spy"><i></i>S&amp;P 500</span>
+              </div>
+            </div>
+            <svg id="live-growth-chart" class="chart" viewBox="0 0 840 300" role="img" aria-label="Live growth of ten thousand dollars for RLQQQ, QQQ, and the S&P 500"></svg>
+            <div class="crosshair-tip" id="live-growth-tip"></div>
+          </div>
+
+          <div class="card chart-card" style="position:relative">
+            <div class="chart-head">
+              <h3>Daily target exposure</h3>
+              <div class="legend">
+                <span class="exposure"><i></i>QQQ allocation</span>
+              </div>
+            </div>
+            <svg id="live-exposure-chart" class="chart" viewBox="0 0 840 300" role="img" aria-label="History of the model's daily target QQQ exposure"></svg>
+            <div class="crosshair-tip" id="live-exposure-tip"></div>
+          </div>
+        </div>
+
+        <div class="card chart-card">
+          <div class="chart-head">
+            <h3>Return and risk comparison</h3>
+            <span class="muted" id="live-session-count"></span>
+          </div>
+          <div class="comparison-wrap">
+            <table class="comparison">
+              <thead>
+                <tr>
+                  <th>Portfolio</th>
+                  <th>Total return</th>
+                  <th>Ann. volatility</th>
+                  <th>Sharpe</th>
+                  <th>Max drawdown</th>
+                  <th>Avg. exposure</th>
+                </tr>
+              </thead>
+              <tbody id="live-comparison-body"></tbody>
+            </table>
+          </div>
+        </div>
+        <p class="chart-note" id="live-performance-note">Loading scoring details&hellip;</p>
+      </section>
+
+      <!-- ================= RESEARCH PERFORMANCE ================= -->
+      <section id="backtest" aria-labelledby="backtest-title">
+        <h2 id="backtest-title">Research evidence, 2010&ndash;2025</h2>
+        <p class="lede">
+          This is the historical walk-forward study, not the live portfolio
+          record above. Every test year was out-of-sample and includes 2&nbsp;bps
+          costs, T-bill cash, and T-bill&nbsp;+50&nbsp;bp financing on leverage.
         </p>
 
         <div class="tiles" id="stat-tiles">
@@ -373,9 +612,6 @@
         </div>
         <p class="chart-note" id="s-sig">&nbsp;</p>
 
-        <!-- 2026 -->
-        <h2>2026 so far</h2>
-        <p class="lede" id="ytd-line">Loading&hellip;</p>
       </section>
 
       <!-- ================= FOOTNOTES ================= -->

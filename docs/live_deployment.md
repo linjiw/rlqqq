@@ -45,12 +45,12 @@ cross-origin isolation is required.
 
 Before showing an exposure, `docs/assets/browser-inference.mjs` verifies:
 
-- the runtime version, manifest schema, `[10, 24]` contract, model SHA-256,
+- the runtime version, manifest schema, `[10, 30]` contract, model SHA-256,
   golden-vector SHA-256, and static-input SHA-256;
 - matching model/source hashes and feature schema across the artifacts, the
   manifest activation date in the raw replay, and one `asOf` date shared by
   the raw replay, Python reference, and live metadata;
-- sorted replay dates, freshness, finite feature rows, and the exact 22-feature
+- sorted replay dates, freshness, finite feature rows, and the exact 28-feature
   order;
 - representative golden logits and actions, then every replay row against the
   Python normalizer, logits, actions, actor exposures, latest aggregates, and
@@ -64,12 +64,15 @@ The audited historical v4 animation remains usable independently.
 
 ## Scheduled static generation
 
-The weekday Pages workflow runs at 22:37 UTC, after the US close and away from
-the busiest top-of-hour period. `scripts/update_live_signal.py` fetches delayed
-QQQ, VIX, 10-year, and 3-month Treasury data, constructs the 28 raw features,
-and writes:
+The weekday Pages workflow runs at 22:37 UTC, 01:07 UTC, and 10:07 UTC so
+feeds that publish on different clocks get multiple safe refresh attempts.
+`scripts/update_live_signal.py` fetches delayed QQQ, SPY, VIX, 10-year, and
+3-month Treasury data plus the cross-asset feature feeds, constructs the 28
+raw features, and writes:
 
-- `docs/assets/live-signal.json`, the latest metadata and Python summary;
+- `docs/assets/live-signal.json`, the latest metadata, Python summary, and
+  completed-session performance against QQQ and SPY for `1M`, `3M`, `YTD`,
+  `1Y`, and since-launch views;
 - `docs/assets/data/policy-input-history.json`, the browser's raw replay path;
 - `docs/assets/data/python-reference.json`, independent normalized features,
   logits, actions, exposures, and final state;
@@ -122,37 +125,31 @@ the summary JSON.
 
 An `asOf: T` signal consumes only data available in the completed close at
 `T` and is labeled for the next close-to-close session. It has no subsequent
-return yet, so performance reported through `T` ends with the prior decision;
-the `T` target must not be counted until another close exists. It is a delayed
+return yet. Performance reported through `T` uses the decision from the prior
+close, while the `T` target remains unscored until another close exists. Live
+portfolio returns use the same 2 bp one-way costs, T-bill cash return, and
+T-bill + 50 bp leveraged financing as the research harness. It is a delayed
 research target, not an intraday price or an order executable at the already
 observed close.
 
-The primary and only deployed stance is the frozen v8 core ensemble. The
+The primary and only deployed stance is the frozen v10 macro core ensemble. The
 historical animation is an archived v4 replay; its tilt-on-VT20 composite is a
 post-hoc leverage overlay, not another model or a deployment candidate.
 
 `scripts/evaluate_model_benchmark.py` provides the checked deployment gate.
 It evaluates 8 folds x 10 seeds per version with the same cash, financing, and
 2 bp one-way cost accounting, then reports frozen 2026 performance and a
-conservative one-close-lag sensitivity. The full rerun makes v4 and v8 core a
-near-tie on the optimistic research timing (Sharpe 1.021 vs 1.026); v8 has
-two fewer questionable calendar features, lower turnover, the marginally
-better Calmar, a stronger historical lag sensitivity, and a stronger
-same-close frozen-2026 comparison. The predeclared simplification rule
-therefore selects v8. The difference is not proof of statistical superiority,
-and simple VT10 remains a demanding benchmark.
+conservative one-close-lag sensitivity. The checked gate selects v10 as the
+historical walk-forward winner; v8 and v4 remain archived eligible cores, and
+the post-hoc composites remain ineligible. The gate still marks the release
+as unqualified for capital deployment because simple volatility targeting is
+competitive under conservative timing.
 
-Those two supporting comparisons use different qualifiers: v8 leads v4 on
-the **historical** one-close-lag sensitivity and on the **same-close** frozen
-2026 replay. The short 2026 lag sensitivity reverses the core ranking (v4
-Sharpe 0.820 versus v8 0.603), so it reinforces the research-only boundary
-rather than serving as promotion evidence.
-
-The v8 reference was selected after the 2026 holdout had been opened, so its
-2026 comparison is not a new untouched test. Retraining can also differ from
-the checked results because the historical training stack was not pinned.
-None of these outputs is personalized investment advice or an execution
-order.
+The v10 reference was selected after the 2026 record had been opened, so that
+record is not a new untouched test. Retraining can also differ from the
+checked results because the historical training stack was not originally
+pinned. None of these outputs is personalized investment advice or an
+execution order.
 
 
 ## Why the browser does not fetch market data itself

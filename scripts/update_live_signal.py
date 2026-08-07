@@ -101,6 +101,7 @@ def main() -> None:
         replay,
         ensemble,
         source_name=source_name,
+        market_frames=frames,
         generated_at=generated_at,
     )
     write_signal_json(payload, args.output)
